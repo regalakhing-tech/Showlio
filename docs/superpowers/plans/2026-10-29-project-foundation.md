@@ -43,5 +43,5 @@ Files: `README.md`, `docs/PROJECT_STRUCTURE.md`, `docs/DEPLOYMENT.md`, `database
 
 - [x] Document local prerequisites, exact run commands, folder responsibilities, environment variables, GitHub secrets, expected CI behavior and the remaining MVP work.
 - [x] Keep SQL files explicitly comment-only until schema and RLS implementation is requested and verified.
-- [ ] Inspect the full change and tracked files, run final checks, commit with a repository-local identity, push `main` to the supplied origin and verify `HEAD` matches `origin/main`.
-- [ ] Report the push result and any live deployment limitations accurately.
+- [x] Inspect the full change and tracked files, run final checks, commit with a repository-local identity, push `main` to the supplied origin and verify `HEAD` matches `origin/main`.
+- [x] Document the verification commands and live deployment requirements; report the final push and CI result in the delivery message.
