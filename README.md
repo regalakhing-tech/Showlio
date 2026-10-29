@@ -2,7 +2,19 @@
 
 **Show your skills. Share your work. Get discovered.**
 
-Project foundation for the talent showcase and creator discovery platform described in [SHOWLIO_INFO.md](SHOWLIO_INFO.md). This repository currently provides organized folders, a coming-soon page, a real PHP health endpoint, local tooling and GitHub CI/CD. Authentication, profiles, discovery, uploads, AI and database policies still need implementation.
+Project foundation for the talent showcase and creator discovery platform described in [SHOWLIO_INFO.md](SHOWLIO_INFO.md). The responsive homepage follows the supplied Showlio reference, with the owner's logo, generated creator portraits and project artwork, a PHP health endpoint, local tooling and GitHub CI/CD. Live accounts, database-backed discovery, uploads, AI generation and database policies remain future implementation work.
+
+## Homepage preview
+
+The page includes the reference's layered hero, creator discovery, AI writing panel, featured projects, community stories and signup call to action. Mobile layouts stack the sections, scale the decorative compositions and provide a compact navigation menu.
+
+- Search and category chips filter sample creators. Creator and project cards open detail previews.
+- Project likes and bookmarks are stored in the current browser only.
+- Signup builds a temporary local profile preview; it does not create an account or publish data.
+- The AI panel shows editable example copy, with writing-mode choices and copying. It does not call Gemini.
+- Statistics, profiles, projects and stories are marked as illustrative preview content.
+
+Generated web images are in `public/assets/images/`; [asset prompts](docs/ASSET_PROMPTS.md) document their provenance. Raw generated PNGs are preserved locally in the ignored `output/imagegen/originals/` folder. Inter is self-hosted with its open-source license under `public/assets/fonts/`.
 
 ## Run locally
 

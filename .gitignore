@@ -3,6 +3,7 @@
 /vendor/
 /public/assets/css/app.css
 /coverage/
+/output/imagegen/
 
 # Local secrets and deployment state
 .env

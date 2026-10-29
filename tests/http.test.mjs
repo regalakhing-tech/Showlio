@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 import { after, before, test } from 'node:test';
+import { creators, projects, imagePath } from '../public/assets/js/community.js';
 
 let server;
 let origin;
@@ -98,4 +99,17 @@ test('does not expose source, environment, Git or blueprint files', async () => 
 test('missing public pages return 404 instead of a fake application screen', async () => {
   const response = await fetch(`${origin}/discover`);
   assert.equal(response.status, 404);
+});
+
+test('serves every generated portrait, project thumbnail, brand asset and web font', async () => {
+  const paths = new Set([
+    ...creators.map((creator) => imagePath(creator.image)),
+    ...projects.map((project) => imagePath(project.image)),
+    '/assets/images/showlio-logo.png', '/assets/icons.svg', '/assets/fonts/inter-latin.woff2',
+  ]);
+  for (const path of paths) {
+    const response = await fetch(`${origin}${path}`);
+    assert.equal(response.status, 200, path);
+    assert.ok((await response.arrayBuffer()).byteLength > 0, path);
+  }
 });

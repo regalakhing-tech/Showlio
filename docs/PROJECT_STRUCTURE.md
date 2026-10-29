@@ -28,11 +28,13 @@ For assets, edit `src/styles/app.css`, then run `npm run build`. Generated CSS i
 
 ## Routing
 
-- `/` and assets are static files under `public/`.
+- `/` is the responsive reference homepage, and assets are static files under `public/`.
 - `/api/health` is the only implemented application endpoint.
 - `api/index.php` answers unknown API routes with JSON 404.
 - `scripts/router.php` emulates these boundaries for the PHP development server.
 - `vercel.json` routes API paths to PHP and leaves static assets alone.
 - Blueprint pages such as `/discover`, `/u/{username}` and `/dashboard` are future work and return 404 until implemented.
+
+The homepage's illustrative records live in `public/assets/js/community.js`, and browser interactions live in `app.js`. Styles are organized into shared/hero/discovery rules (`landing.css`), lower-page components (`sections.css`) and viewport layouts (`responsive.css`), compiled through `src/styles/app.css`.
 
 The server is stateless: do not use persistent PHP disk sessions, local upload storage or background PHP workers on Vercel.
