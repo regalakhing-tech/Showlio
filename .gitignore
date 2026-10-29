@@ -1,0 +1,22 @@
+# Dependencies and generated output
+/node_modules/
+/vendor/
+/public/assets/css/app.css
+/coverage/
+
+# Local secrets and deployment state
+.env
+.env.*
+!.env.example
+/.vercel/
+*.pem
+*.key
+
+# Editor, OS and temporary files
+/.idea/
+/.vscode/
+/.worktrees/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

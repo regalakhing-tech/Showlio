@@ -1,0 +1,17 @@
+@import "tailwindcss" source(none);
+@source "../../public/**/*.html";
+@source "../../public/assets/js/**/*.js";
+
+@theme {
+  --color-canvas: #f4f2ec;
+  --color-ink: #1f2925;
+  --color-accent: #34674a;
+  --font-sans: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  :focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 5px;
+  }
+}
