@@ -1,6 +1,6 @@
 # Showlio — Project Information & Development Blueprint
 
-> **Official Title:** Showlio: An AI-Powered Talent Showcase, Skill-Based Discovery, and Collaborative Networking Platform  
+> **Official Title:** Showlio: A Talent Showcase, Skill-Based Discovery, and Collaborative Networking Platform with AI-Assisted Profile Building  
 > **Tagline:** **Show Your Skills. Share Your Work. Get Discovered.**  
 > **Project Type:** Responsive web application / 7-day school project MVP  
 > **Core Stack:** PHP, Supabase, HTML, Tailwind CSS, JavaScript, Vercel  

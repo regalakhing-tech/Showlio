@@ -4,7 +4,8 @@ import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 import { after, before, test } from 'node:test';
-import { creators, projects, imagePath } from '../public/assets/js/community.js';
+import { creators, projects, imagePath, thumbPath } from '../public/assets/js/community.js';
+import { workspaceProjects, people, defaultProfile } from '../public/assets/js/workspace-data.js';
 
 let server;
 let origin;
@@ -105,11 +106,37 @@ test('serves every generated portrait, project thumbnail, brand asset and web fo
   const paths = new Set([
     ...creators.map((creator) => imagePath(creator.image)),
     ...projects.map((project) => imagePath(project.image)),
+    ...[...creators, ...projects].map((item) => thumbPath(item.image)),
+    '/assets/images/showlio-logo-sm.png', '/assets/images/favicon.png',
     '/assets/images/showlio-logo.png', '/assets/icons.svg', '/assets/fonts/inter-latin.woff2',
   ]);
   for (const path of paths) {
     const response = await fetch(`${origin}${path}`);
     assert.equal(response.status, 200, path);
     assert.ok((await response.arrayBuffer()).byteLength > 0, path);
+  }
+});
+
+test('serves the workspace and account pages, redirecting bare paths', async () => {
+  for (const [path, marker] of [['/app/', /Explore portfolios/], ['/auth/', /Show your work/]]) {
+    const response = await fetch(`${origin}${path}`);
+    assert.equal(response.status, 200, path);
+    assert.match(await response.text(), marker, path);
+    const bare = await fetch(`${origin}${path.slice(0, -1)}`, { redirect: 'manual' });
+    assert.equal(bare.status, 308, path);
+    assert.equal(bare.headers.get('location'), path);
+  }
+});
+
+test('serves every workspace image, stylesheet and script', async () => {
+  const paths = new Set([
+    ...workspaceProjects.flatMap((project) => [project.image, project.image.replace('/thumbs/', '/')]),
+    ...people.filter((person) => person.avatar).map((person) => person.avatar), defaultProfile.avatar,
+    '/assets/css/workspace.css', '/assets/css/auth.css', '/assets/js/auth.js', '/assets/js/auth-model.js', '/assets/workspace-icons.svg',
+  ]);
+  for (const path of paths) {
+    const response = await fetch(`${origin}${path}`);
+    assert.equal(response.status, 200, path);
+    await response.arrayBuffer();
   }
 });

@@ -24,5 +24,5 @@ for (const path of ['api', 'src', 'scripts', 'tests', 'public/assets/js'].flatMa
   if (/\.(mjs|js)$/.test(path)) run(process.execPath, ['--check', path]);
 }
 
-run(process.execPath, ['node_modules/@tailwindcss/cli/dist/index.mjs', '-i', 'src/styles/app.css', '-o', 'public/assets/css/app.css', '--minify']);
+run(process.execPath, ['scripts/build.mjs']);
 run(process.execPath, ['--test', ...filesIn('tests').filter((path) => path.endsWith('.test.mjs'))]);

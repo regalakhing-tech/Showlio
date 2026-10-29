@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Explore developer, AI automation, video and digital art portfolios in the Showlio demo workspace.">
+  <meta name="theme-color" content="#f5f8fb"><title>Showlio — Explore portfolios</title>
+  <link rel="icon" href="/assets/images/favicon.png">
+  <link rel="preload" href="/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/app.css"><link rel="stylesheet" href="/assets/css/workspace.css">
+  <script type="module" src="/assets/js/workspace.js"></script>
+  <link rel="modulepreload" href="/assets/js/workspace-shared.js"><link rel="modulepreload" href="/assets/js/workspace-data.js"><link rel="modulepreload" href="/assets/js/workspace-model.js"><link rel="modulepreload" href="/assets/js/workspace-explore.js"><link rel="modulepreload" href="/assets/js/workspace-notifications.js"><link rel="modulepreload" href="/assets/js/workspace-settings.js">
+</head>
+<body class="workspace">
+  <a class="ws-skip" href="#workspace-view">Skip to workspace</a>
+  <header id="workspace-header" class="ws-header"><div class="ws-header-inner"><a class="ws-brand" href="/" aria-label="Showlio home"><img src="/assets/images/showlio-logo-sm.webp" alt="Showlio" width="651" height="217"></a><div class="ws-skel ws-skel-search"></div></div></header>
+  <div class="ws-layout"><aside id="workspace-sidebar" class="ws-sidebar" aria-label="Your profile and navigation"><div class="ws-skel ws-skel-cover"></div><div class="ws-skel-body"><span class="ws-skel ws-skel-avatar"></span><span class="ws-skel ws-skel-line" style="width:62%"></span><span class="ws-skel ws-skel-line" style="width:80%"></span><span class="ws-skel ws-skel-line" style="width:45%"></span></div></aside><main id="workspace-view" tabindex="-1"><div class="ws-skel-feed" aria-hidden="true"><div class="ws-skel ws-skel-title"></div><div class="ws-skel-grid"><div class="ws-skel ws-skel-card"></div><div class="ws-skel ws-skel-card"></div><div class="ws-skel ws-skel-card"></div><div class="ws-skel ws-skel-card"></div><div class="ws-skel ws-skel-card"></div><div class="ws-skel ws-skel-card"></div></div></div></main></div>
+  <dialog id="workspace-dialog" class="ws-dialog" aria-labelledby="ws-modal-title"><div class="ws-dialog-shell"><button id="ws-modal-close" class="ws-icon-button ws-dialog-close" aria-label="Close dialog"><svg class="ws-icon" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="/assets/workspace-icons.svg#close"/></svg></button><h2 id="ws-modal-title"></h2><div id="ws-modal-content"></div></div></dialog>
+  <div id="workspace-toast" class="ws-toast" role="status" aria-live="polite"></div>
+  <noscript><p class="ws-panel">Enable JavaScript to explore this browser-local demo workspace. <a href="/">Return to Showlio</a>.</p></noscript>
+</body>
+</html>

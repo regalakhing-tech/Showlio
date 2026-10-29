@@ -11,6 +11,19 @@ if ($path === '/api' || str_starts_with($path, '/api/')) {
 }
 
 $publicRoot = realpath(dirname(__DIR__) . '/public');
+// Single-page sections served from their folder index.
+foreach (['app', 'auth'] as $section) {
+    if ($path === '/' . $section) {
+        header('Location: /' . $section . '/', true, 308);
+        return true;
+    }
+    if ($path === '/' . $section . '/') {
+        header('Content-Type: text/html; charset=utf-8');
+        header('X-Content-Type-Options: nosniff');
+        readfile($publicRoot . '/' . $section . '/index.html');
+        return true;
+    }
+}
 $file = realpath($publicRoot . ($path === '/' ? '/index.html' : $path));
 $hasHiddenSegment = preg_match('~(^|/)[.]~', str_replace('\\', '/', $path)) === 1;
 

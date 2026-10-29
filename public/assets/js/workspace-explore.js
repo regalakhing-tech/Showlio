@@ -1,0 +1,48 @@
+import { icon, esc, compact, avatar } from './workspace-shared.js';
+import { personById, disciplines, disciplineById } from './workspace-data.js';
+import { filterProjects } from './workspace-model.js';
+
+// Small syntax highlighter for the code covers. Input is escaped first.
+const highlight = (line) => esc(line).replace(/(&quot;.*?&quot;)|\b(import|export|from|const|async|await|function|return)\b|\b(true|false)\b|([A-Za-z_]\w*)(?=\()/g,
+  (match, string, keyword, literal, call) => string ? `<b class="s">${string}</b>` : keyword ? `<b class="k">${keyword}</b>` : literal ? `<b class="n">${literal}</b>` : `<b class="f">${call}</b>`);
+
+function codeCover(cover) {
+  return `<span class="ws-pcover ws-cover-code" aria-hidden="true"><span class="ws-code-bar"><i></i><i></i><i></i><span>${icon('code')} ${esc(cover.file)}</span></span><span class="ws-code-lines">${cover.lines.map((line) => `<span>${highlight(line) || ' '}</span>`).join('')}</span></span>`;
+}
+function flowCover(cover) {
+  const node = ([symbol, label], index) => `<span class="ws-flow-node" style="--n:${index}"><b>${icon(symbol)}</b><small>${esc(label)}</small></span>`;
+  return `<span class="ws-pcover ws-cover-flow" aria-hidden="true"><span class="ws-flow-row">${cover.nodes.map(node).join('<i class="ws-flow-link"></i>')}</span>${cover.branch ? `<span class="ws-flow-branch"><i class="ws-flow-elbow"></i>${node(cover.branch, 3)}</span>` : ''}<span class="ws-flow-stat">${icon('zap')} ${esc(cover.stat)}</span></span>`;
+}
+export function projectCover(project, size = 'card') {
+  if (project.cover?.type === 'code') return codeCover(project.cover);
+  if (project.cover?.type === 'flow') return flowCover(project.cover);
+  return `<img src="${esc(project.image)}" alt="${esc(project.title)}" width="${size === 'card' ? 460 : 600}" height="${size === 'card' ? 310 : 360}" loading="lazy">`;
+}
+const discStyle = (category) => { const disc = disciplineById(category); return disc ? `--disc:${disc.color};--disc-tint:${disc.tint}` : ''; };
+
+export function projectCard(project, state, index = 0) {
+  const author = project.owner ? { ...state.profile, role: state.profile.headline } : personById(project.creator);
+  const isSaved = state.bookmarks.includes(project.id);
+  const isLiked = state.likes.includes(project.id);
+  const primary = project.categories[0];
+  const tools = (project.tools ?? []).slice(0, 2);
+  return `<article class="ws-project" style="--i:${index};${discStyle(primary)}"><div class="ws-project-media"><button class="ws-project-open" data-project="${esc(project.id)}" aria-label="View ${esc(project.title)}">${projectCover(project)}</button><button class="ws-save ${isSaved ? 'is-active' : ''} ${state.popped === `bookmark:${project.id}` ? 'is-popping' : ''}" data-bookmark="${esc(project.id)}" aria-label="${isSaved ? 'Unsave' : 'Save'} ${esc(project.title)}" aria-pressed="${isSaved}">${icon('bookmark')}</button>${project.duration ? `<span class="ws-duration">${icon('play')} ${esc(project.duration)}</span>` : ''}</div><div class="ws-project-body"><button class="ws-project-title" data-project="${esc(project.id)}">${esc(project.title)}</button><p class="ws-project-description">${esc(project.description)}</p><div class="ws-pills"><button class="ws-pill ws-disc-pill" data-category="${esc(primary)}">${icon(disciplineById(primary)?.icon ?? 'tag')}${esc(primary)}</button>${tools.map((tool) => `<span class="ws-pill ws-tool-pill">${esc(tool)}</span>`).join('')}</div><button class="ws-project-person" data-person="${project.owner ? 'self' : esc(project.creator)}">${avatar(author)}<span><strong>${esc(author.name)} ${icon('verified')}</strong><small>${esc(author.role)}</small></span></button><div class="ws-project-stats"><span>${icon('eye')} ${compact(project.views)}</span><button data-like="${esc(project.id)}" class="${isLiked ? 'is-liked' : ''} ${state.popped === `like:${project.id}` ? 'is-popping' : ''}" aria-label="${isLiked ? 'Unlike' : 'Like'} ${esc(project.title)}" aria-pressed="${isLiked}">${icon('heart')} ${compact(project.likes + (isLiked ? 1 : 0))}</button><button data-comments="${esc(project.id)}" aria-label="View comments on ${esc(project.title)}">${icon('message')} ${compact(project.comments)}</button></div></div></article>`;
+}
+
+const headings = {
+  all: ['Explore portfolios', 'Code, AI automations, films and digital art from creators who show how they work.'],
+  mine: ['My portfolio', 'The work you show on your public profile. Add projects to tell a fuller story.'],
+  saved: ['Saved projects', 'Work you bookmarked to come back to.'],
+};
+export function renderExplore(state) {
+  const results = filterProjects(state.projects, state.feed, state.bookmarks);
+  const scope = filterProjects(state.projects, { ...state.feed, category: 'All' }, state.bookmarks);
+  const count = (category) => category === 'All' ? scope.length : scope.filter((project) => project.categories.includes(category)).length;
+  const [title, intro] = headings[state.feed.mineOnly ? 'mine' : state.feed.savedOnly ? 'saved' : 'all'];
+  const tabs = [{ id: 'All', icon: 'grid', label: 'All work', color: '#1f2a55', tint: '#eef2fa' }, ...disciplines.map((item) => ({ ...item, label: item.id }))];
+  const recommendations = ['noah', 'maya', 'kenji', 'elena', 'priya'];
+  const collections = [['Developer portfolios', 'project-taskflow', 'Development'], ['Films & edits', 'project-travel', 'Video'], ['Digital art & 3D', 'workspace-luma', 'Digital Art'], ['Brand & product design', 'project-brand-identity', 'Design']];
+  const inCategory = (category) => state.projects.filter((project) => project.categories.includes(category)).length;
+  const empty = `<div class="ws-empty">${icon('folder')}<h2>${state.feed.mineOnly && !state.feed.query && state.feed.category === 'All' ? 'Your portfolio is ready for its first project' : 'No projects here yet'}</h2><p>${state.feed.savedOnly ? 'Save a project with the bookmark button to find it here.' : 'Try another search or discipline, or add a project of your own.'}</p><div class="ws-modal-actions"><button class="ws-btn ws-soft" data-action="clear-filters">Show all work</button><button class="ws-btn ws-primary" data-action="share">${icon('plus')} Add a project</button></div></div>`;
+  return `<div class="ws-content-grid"><section class="ws-panel ws-explore-panel"><div class="ws-page-heading"><div><h1>${title}</h1><p>${intro}</p></div><button class="ws-btn ws-primary" data-action="share">${icon('plus')} Add a project</button></div><div class="ws-disciplines" role="group" aria-label="Filter by discipline">${tabs.map((tab) => `<button class="ws-discipline ${state.feed.category === tab.id ? 'active' : ''}" data-category="${tab.id}" aria-pressed="${state.feed.category === tab.id}" style="--disc:${tab.color};--disc-tint:${tab.tint}"><span class="ws-discipline-icon">${icon(tab.icon)}</span><b>${count(tab.id)}</b><span class="ws-discipline-label">${tab.label}</span></button>`).join('')}</div><div class="ws-feed-tabs" aria-label="Sort projects">${[['for-you', 'For you'], ['latest', 'Latest'], ['popular', 'Most popular'], ['trending', 'Trending']].map(([id, text]) => `<button data-sort="${id}" class="${state.feed.sort === id ? 'active' : ''}" aria-pressed="${state.feed.sort === id}">${text}</button>`).join('')}<button class="ws-btn ws-outline ws-filter-button" data-action="filter" aria-expanded="${state.feed.filtersOpen}">${icon('sliders')} Filter</button></div>${state.feed.filtersOpen ? `<div class="ws-filter-panel"><p>Refine your discovery</p><label><input id="ws-only-saved" type="checkbox" ${state.feed.savedOnly ? 'checked' : ''}> Only saved projects</label><button class="ws-text-button" data-action="clear-filters">Clear all filters</button></div>` : ''}${state.feed.query ? `<p class="ws-query-note">Results for “${esc(state.feed.query)}” <button class="ws-text-button" data-action="clear-search">${icon('close')} Clear search</button></p>` : ''}<p class="ws-result-status ws-sr" role="status">${results.length} projects found</p><div class="ws-project-grid">${results.length ? results.map((project, index) => projectCard(project, state, index)).join('') : empty}</div></section><aside class="ws-right-rail"><section class="ws-panel ws-collection-panel"><div class="ws-panel-heading"><h2>Featured collection</h2><button data-action="collections" class="ws-text-button">View all</button></div><button class="ws-feature-card" data-category="AI Automation"><span class="ws-feature-art" aria-hidden="true"><i>${icon('mail')}</i><i>${icon('sparkles')}</i><i>${icon('message')}</i></span><strong>AI Automation</strong><span>Agents and workflows that<br>save teams hours every week.</span><b>${icon('arrow')}</b></button>${collections.map(([name, image, category]) => `<button class="ws-collection-row" data-category="${category}"><img src="/assets/images/thumbs/${image}.webp" alt="" width="82" height="58" loading="lazy"><span><strong>${name}</strong><small>${inCategory(category)} projects</small></span>${icon('chevron')}</button>`).join('')}</section><section class="ws-panel ws-recommended"><div class="ws-panel-heading"><h2>Recommended creators</h2><button class="ws-text-button" data-action="creators">View all</button></div>${recommendations.map((id) => { const person = personById(id); const follows = state.following.includes(id); return `<div class="ws-recommended-row"><button data-person="${id}">${avatar(person)}<span><strong>${person.name} ${icon('verified')}</strong><small>${person.role}</small></span></button><button class="ws-follow ${follows ? 'following' : ''}" data-follow="${id}" aria-pressed="${follows}">${follows ? `${icon('check')} Following` : 'Follow'}</button></div>`; }).join('')}</section></aside></div>`;
+}

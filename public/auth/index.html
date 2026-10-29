@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Sign in or create your Showlio account to build a portfolio for your code, AI automations, films and digital art.">
+  <meta name="theme-color" content="#f6f8fd"><title>Sign in — Showlio</title>
+  <link rel="icon" href="/assets/images/favicon.png">
+  <link rel="preload" href="/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/auth.css">
+  <script>document.documentElement.classList.add('js');</script>
+  <script type="module" src="/assets/js/auth.js"></script>
+  <link rel="modulepreload" href="/assets/js/auth-model.js">
+  <link rel="prefetch" href="/app/"><link rel="prefetch" href="/assets/css/workspace.css"><link rel="prefetch" href="/assets/js/workspace.js">
+</head>
+<body class="auth">
+  <a class="auth-skip" href="#auth-card">Skip to form</a>
+  <div class="auth-bg" aria-hidden="true"><i></i><i></i><i></i></div>
+  <main class="auth-shell">
+    <header class="auth-head">
+      <a class="auth-back" href="/"><svg class="auth-icon" aria-hidden="true"><use href="/assets/workspace-icons.svg#arrow-left"/></svg>Back to home</a>
+      <a class="auth-brand" href="/" aria-label="Showlio home"><img src="/assets/images/showlio-logo-sm.webp" alt="Showlio" width="651" height="217"></a>
+      <h1 class="auth-title" id="auth-title"><span class="auth-line"><span>Show your work.</span></span><span class="auth-line auth-accent"><span>Build your portfolio.</span></span></h1>
+      <p class="auth-lede" id="auth-lede">A modern platform for developers, AI builders, video creators and digital artists to showcase projects, share skills and grow their career.</p>
+    </header>
+
+    <div class="auth-showcase" id="auth-showcase" aria-hidden="true">
+      <div class="sc-window" id="sc-window" data-active="0">
+        <div class="sc-window-bar"><i></i><i></i><i></i><span class="sc-url"><svg class="sc-icon"><use href="/assets/workspace-icons.svg#lock"/></svg>showlio.com/explore</span></div>
+        <div class="sc-window-head"><strong>Featured this week</strong><span><svg class="sc-icon"><use href="/assets/workspace-icons.svg#sparkles"/></svg>4 disciplines</span></div>
+        <div class="sc-tiles">
+          <figure class="sc-tile" data-tile="0"><img src="/assets/images/thumbs/project-taskflow.webp" alt="" width="142" height="76"><figcaption><svg class="sc-icon"><use href="/assets/workspace-icons.svg#code"/></svg>Development</figcaption></figure>
+          <figure class="sc-tile sc-tile-flow" data-tile="1"><span class="sc-mini-flow"><i></i><b></b><i></i><b></b><i></i></span><figcaption><svg class="sc-icon"><use href="/assets/workspace-icons.svg#workflow"/></svg>AI Automation</figcaption></figure>
+          <figure class="sc-tile" data-tile="2"><img src="/assets/images/thumbs/workspace-neon.webp" alt="" width="142" height="76"><span class="sc-play"><svg class="sc-icon"><use href="/assets/workspace-icons.svg#play"/></svg></span><figcaption><svg class="sc-icon"><use href="/assets/workspace-icons.svg#video"/></svg>Video</figcaption></figure>
+          <figure class="sc-tile" data-tile="3"><img src="/assets/images/thumbs/workspace-luma.webp" alt="" width="142" height="76"><figcaption><svg class="sc-icon"><use href="/assets/workspace-icons.svg#palette"/></svg>Digital Art</figcaption></figure>
+        </div>
+        <svg class="sc-cursor" viewBox="0 0 24 24"><path d="M5 3.5 19 11l-6.2 1.7L10 19Z"/></svg>
+      </div>
+      <div class="sc-card">
+        <div class="sc-card-top"><span class="sc-app-icon" data-sc="tone"><svg class="sc-icon"><use data-sc="icon" href="/assets/workspace-icons.svg#layers"/></svg></span><svg class="sc-icon sc-open"><use href="/assets/workspace-icons.svg#external"/></svg></div>
+        <strong data-sc="title">AI Notes</strong>
+        <p data-sc="desc">Turn meetings into clear, actionable notes.</p>
+        <div class="sc-tags" data-sc="chips"><span>Next.js</span><span>TypeScript</span><span>AI</span></div>
+        <div class="sc-preview" data-sc="preview">
+          <div class="sc-preview-app"><span><i></i><i></i><i></i><i></i></span><span><i></i><i></i><i></i><i></i></span></div>
+          <div class="sc-preview-flow"><i></i><b></b><i></i><b></b><i></i></div>
+          <img class="sc-preview-image" src="/assets/images/thumbs/workspace-neon.webp" alt="" width="200" height="90">
+        </div>
+      </div>
+      <div class="sc-side">
+        <div class="sc-side-panel" data-side="devflow">
+          <span class="sc-side-icon"><svg class="sc-icon"><use href="/assets/workspace-icons.svg#zap"/></svg></span>
+          <strong>DevFlow</strong><p>A beautiful workflow tool for developers.</p>
+          <div class="sc-tags"><span>React</span><span>Node.js</span></div>
+          <svg class="sc-line" viewBox="0 0 120 50"><path d="M2 44C18 40 24 30 38 33S58 22 70 26 90 12 104 15 116 8 118 6"/></svg>
+        </div>
+        <div class="sc-side-panel" data-side="bars">
+          <span class="sc-side-icon"><svg class="sc-icon"><use href="/assets/workspace-icons.svg#users"/></svg></span>
+          <small>Profile Views</small><strong class="sc-big">12.4K <em>↑ 23%</em></strong>
+          <span class="sc-bars"><i style="--h:28%"></i><i style="--h:40%"></i><i style="--h:34%"></i><i style="--h:55%"></i><i style="--h:48%"></i><i style="--h:70%"></i><i style="--h:92%"></i></span>
+          <span class="sc-range"><span>7D</span><b>30D</b><span>90D</span></span>
+        </div>
+        <div class="sc-side-panel" data-side="growth">
+          <span class="sc-side-icon"><svg class="sc-icon"><use href="/assets/workspace-icons.svg#chart"/></svg></span>
+          <small>Profile Views</small><strong class="sc-grow">+62% <span>this week</span></strong>
+          <svg class="sc-line sc-line-up" viewBox="0 0 120 60"><path d="M2 56 22 44 36 48 54 30 70 36 92 16 116 4"/><path d="m106 3 10 1-2 10"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <ul class="auth-perks">
+      <li><span><svg class="sc-icon"><use href="/assets/workspace-icons.svg#folder"/></svg></span>Showcase<br>projects</li>
+      <li><span><svg class="sc-icon"><use href="/assets/workspace-icons.svg#chart"/></svg></span>Highlight<br>your skills</li>
+      <li><span><svg class="sc-icon"><use href="/assets/workspace-icons.svg#users"/></svg></span>Get discovered<br>by opportunities</li>
+    </ul>
+
+    <section class="auth-panel" aria-labelledby="auth-card-title">
+      <div class="auth-card" id="auth-card" tabindex="-1">
+        <div class="auth-view" id="auth-view">
+          <noscript><h2 id="auth-card-title">Welcome back</h2><p class="auth-sub">Turn on JavaScript to use this demo sign-in. <a href="/">Return to Showlio</a>.</p></noscript>
+        </div>
+      </div>
+    </section>
+  </main>
+  <dialog class="auth-dialog" id="auth-dialog" aria-labelledby="auth-dialog-title"><h2 id="auth-dialog-title"></h2><p id="auth-dialog-text"></p><button class="auth-button" id="auth-dialog-close" type="button">Got it</button></dialog>
+  <div class="auth-toast" id="auth-toast" role="status" aria-live="polite"></div>
+</body>
+</html>

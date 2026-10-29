@@ -15,12 +15,13 @@ export const projects = [
 ];
 
 export const stories = [
-  { name: 'Lia Mendoza', role: 'UI/UX Designer', creator: 'lia', quote: 'Showlio helped me organize my work and get discovered by amazing collaborators. The AI tools made writing my profile so much easier!' },
-  { name: 'Daniel Cruz', role: 'Full Stack Developer', creator: 'daniel', quote: "I found teammates for my side project through Showlio. It's a great platform for students and creators to connect and build together." },
-  { name: 'Maya Santos', role: 'Digital Illustrator', creator: 'maya', quote: 'As someone without a portfolio website, Showlio gave me a simple way to showcase my art and reach people who appreciate my work.' },
-  { name: 'Kenji Tan', role: 'Video Editor', creator: 'kenji', quote: 'Having my creative work in one place makes it easier to share my process and connect with people who love telling stories.' },
+  { name: 'Lia Mendoza', role: 'UI/UX Designer', creator: 'lia', rating: 5, quote: 'Showlio helped me organize my work and get discovered by amazing collaborators. The AI tools made writing my profile so much easier!' },
+  { name: 'Daniel Cruz', role: 'Full Stack Developer', creator: 'daniel', rating: 4.5, quote: "I found teammates for my side project through Showlio. It's a great platform for students and creators to connect and build together." },
+  { name: 'Maya Santos', role: 'Digital Illustrator', creator: 'maya', rating: 5, quote: 'As someone without a portfolio website, Showlio gave me a simple way to showcase my art and reach people who appreciate my work.' },
+  { name: 'Kenji Tan', role: 'Video Editor', creator: 'kenji', rating: 5, quote: 'Having my creative work in one place makes it easier to share my process and connect with people who love telling stories.' },
 ];
 
-export const categories = ['All', 'Development', 'Design', 'Photography', 'Video', 'Writing', 'Illustration', 'Marketing', 'UI/UX'];
-export const imagePath = (name) => `/assets/images/${name}.jpg`;
+export const imagePath = (name) => `/assets/images/${name}.webp`;
+// Small copies for avatars, cards and the hero preview; dialogs keep the full images.
+export const thumbPath = (name) => `/assets/images/thumbs/${name}.webp`;
 export const creatorById = (id) => creators.find((creator) => creator.id === id);
