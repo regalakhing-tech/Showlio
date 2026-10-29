@@ -150,7 +150,7 @@ test('serves every workspace image, stylesheet and script', async () => {
   const paths = new Set([
     ...workspaceProjects.flatMap((project) => [project.image, project.image.replace('/thumbs/', '/')]),
     ...people.filter((person) => person.avatar).map((person) => person.avatar), defaultProfile.avatar,
-    '/assets/css/workspace.css', '/assets/css/auth.css', '/assets/js/auth.js', '/assets/js/auth-model.js', '/assets/workspace-icons.svg',
+    '/assets/css/workspace.css', '/assets/css/auth.css', '/assets/js/auth.js', '/assets/js/auth-model.js', '/assets/js/auth-google.js', '/assets/workspace-icons.svg',
   ]);
   for (const path of paths) {
     const response = await fetch(`${origin}${path}`);
