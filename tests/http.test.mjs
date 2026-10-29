@@ -54,6 +54,24 @@ test('serves the Showlio starter', async () => {
   assert.match(await response.text(), /Showlio/);
 });
 
+test('serves the independent portfolio builder and viewer without changing existing routes', async () => {
+  for (const path of ['/portfolio/', '/portfolio/view/']) {
+    const response = await fetch(`${origin}${path}`);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers.get('content-type'), /text\/html/);
+    assert.match(await response.text(), /portfolio/i);
+    const bare = await fetch(`${origin}${path.slice(0, -1)}`, { redirect: 'manual' });
+    assert.equal(bare.status, 308, path);
+    assert.equal(bare.headers.get('location'), path);
+  }
+  for (const path of ['/assets/css/portfolio.css', '/assets/css/portfolio-public.css', '/assets/js/portfolio-builder.js', '/assets/js/portfolio-editor.js', '/assets/js/portfolio-model.js', '/assets/js/portfolio-store.js', '/assets/js/portfolio-view.js', '/assets/js/portfolio-render.js', '/assets/js/portfolio-qr.js', '/assets/vendor/qrcode.js']) {
+    const response = await fetch(`${origin}${path}`);
+    assert.equal(response.status, 200, path);
+    if (path.endsWith('.js')) assert.match(response.headers.get('content-type'), /javascript/, path);
+    assert.ok((await response.arrayBuffer()).byteLength > 0, path);
+  }
+});
+
 test('health proves PHP execution without returning environment secrets', async () => {
   const response = await fetch(`${origin}/api/health?probe=1`);
   assert.equal(response.status, 200);

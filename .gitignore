@@ -4,6 +4,10 @@
 /public/assets/css/app.css
 /public/assets/css/workspace.css
 /public/assets/css/auth.css
+/public/assets/css/portfolio.css
+/public/assets/css/portfolio-public.css
+/public/assets/vendor/qrcode.mjs
+/public/assets/vendor/qrcode.js
 /coverage/
 /output/imagegen/
 

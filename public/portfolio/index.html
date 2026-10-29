@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Build your own portfolio with Showlio. Add your identity, projects and products, then choose your style.">
+  <meta name="theme-color" content="#f4f8fb"><title>Create your portfolio — Showlio</title>
+  <link rel="icon" href="/assets/images/favicon.png">
+  <link rel="preload" href="/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/app.css"><link rel="stylesheet" href="/assets/css/portfolio.css">
+  <script type="module" src="/assets/js/portfolio-builder.js"></script>
+</head>
+<body class="pb-body">
+  <a class="pb-skip" href="#pb-main">Skip to portfolio editor</a>
+  <header class="pb-header">
+    <a class="pb-brand" href="/app/" aria-label="Showlio workspace"><img src="/assets/images/showlio-logo-sm.webp" alt="Showlio" width="138" height="46"></a>
+    <a class="pb-back-link" href="/app/"><svg class="pb-icon" aria-hidden="true"><use href="/assets/workspace-icons.svg#arrow-left"/></svg> My portfolio</a>
+    <span class="pb-save-status is-saving" id="pb-save-status" role="status">Opening portfolio…</span>
+    <div class="pb-header-actions"><button class="pb-btn pb-outline" data-action="save" type="button">Save draft</button><button class="pb-btn pb-outline" data-action="preview" type="button"><svg class="pb-icon" aria-hidden="true"><use href="/assets/workspace-icons.svg#eye"/></svg>Preview</button></div>
+  </header>
+  <div class="pb-shell"><aside class="pb-sidebar" id="pb-sidebar" aria-label="Portfolio builder steps"><h2>Build your portfolio</h2></aside><main id="pb-main" class="pb-main" tabindex="-1"><div class="pb-empty"><h1>Opening your portfolio…</h1></div></main></div>
+  <footer class="pb-footer" id="pb-footer"></footer>
+  <dialog id="pb-dialog" class="pb-dialog" aria-labelledby="pb-dialog-title"><div class="pb-modal-header"><div><h2 id="pb-dialog-title"></h2><p id="pb-dialog-subtitle"></p></div><button class="pb-icon-button" type="button" data-action="close-modal" aria-label="Close dialog"><svg class="pb-icon" aria-hidden="true"><use href="/assets/workspace-icons.svg#close"/></svg></button></div><div id="pb-dialog-content"></div><p id="pb-modal-feedback" class="pb-modal-note" role="status" aria-live="polite"></p></dialog>
+  <div class="pb-toast" id="pb-toast" role="status" aria-live="polite"></div>
+  <noscript><p>Please enable JavaScript to create your portfolio. <a href="/app/">Return to Showlio</a>.</p></noscript>
+</body>
+</html>

@@ -12,7 +12,7 @@ if ($path === '/api' || str_starts_with($path, '/api/')) {
 
 $publicRoot = realpath(dirname(__DIR__) . '/public');
 // Single-page sections served from their folder index.
-foreach (['app', 'auth'] as $section) {
+foreach (['app', 'auth', 'portfolio', 'portfolio/view'] as $section) {
     if ($path === '/' . $section) {
         header('Location: /' . $section . '/', true, 308);
         return true;

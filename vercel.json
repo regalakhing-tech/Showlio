@@ -11,12 +11,16 @@
     }
   },
   "rewrites": [
+    { "source": "/portfolio/", "destination": "/portfolio/index.html" },
+    { "source": "/portfolio/view/", "destination": "/portfolio/view/index.html" },
     { "source": "/app/", "destination": "/app/index.html" },
     { "source": "/auth/", "destination": "/auth/index.html" },
     { "source": "/api", "destination": "/api/index.php" },
     { "source": "/api/:path*", "destination": "/api/index.php" }
   ],
   "redirects": [
+    { "source": "/portfolio", "destination": "/portfolio/", "permanent": true },
+    { "source": "/portfolio/view", "destination": "/portfolio/view/", "permanent": true },
     { "source": "/app", "destination": "/app/", "permanent": true },
     { "source": "/auth", "destination": "/auth/", "permanent": true }
   ],
