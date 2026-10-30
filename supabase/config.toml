@@ -1,0 +1,14 @@
+# Remote project settings managed from the repo. `supabase config push` only
+# changes properties declared here; SMTP credentials stay in the dashboard.
+project_id = "showlio"
+
+[auth]
+site_url = "https://showlio-seven.vercel.app"
+additional_redirect_urls = ["https://showlio-seven.vercel.app/**", "http://127.0.0.1:8000/**"]
+
+[auth.email]
+otp_length = 6
+
+[auth.email.template.confirmation]
+subject = "Your Showlio verification code"
+content_path = "./supabase/templates/confirmation.html"

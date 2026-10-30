@@ -1,3 +1,2 @@
--- Reserved for the verified Showlio schema described in SHOWLIO_INFO.md section 7.
--- Intentionally comment-only: the foundation does not implement the database.
--- Add reviewed, versioned migrations when implementing authentication and profiles.
+-- Superseded: the schema lives in supabase/migrations/.
+-- See database/README.md for the table map and access rules.

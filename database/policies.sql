@@ -1,3 +1,2 @@
--- Reserved for verified Showlio grants, RLS and Storage access policies.
--- Intentionally comment-only: no policies or public access are installed here.
--- Test owner, anonymous, draft and published access before enabling any CRUD route.
+-- Superseded: RLS, grants and Storage policies live in supabase/migrations/.
+-- See database/README.md for the access rules.

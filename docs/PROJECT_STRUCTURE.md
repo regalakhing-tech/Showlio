@@ -14,9 +14,10 @@ The repository follows section 8 of `SHOWLIO_INFO.md`, with `scripts/`, `tests/`
 | `public/` | HTML pages and browser-safe static assets | `.env`, SQL, raw imports or private PHP files |
 | `public/assets/js/` | Vanilla browser interactions and page modules | Gemini or elevated Supabase keys |
 | `public/assets/images/` | Repository-owned illustrations and icons | Creator uploads and draft media |
-| `database/` | Schema/RLS notes and reviewed versioned migrations | Live credentials and database dumps with personal data |
+| `database/` | Data model map and RLS notes | Live credentials and database dumps with personal data |
+| `supabase/migrations/` | Reviewed, versioned SQL migrations (schema, RLS, Storage) | Edits to already-applied migrations |
 | `scripts/` | Development, validation and deployment tooling | Product request handlers |
-| `tests/` | HTTP and later feature/access-control tests | Real accounts or production credentials |
+| `tests/` | HTTP, model and database access-control tests (PGlite) | Real accounts or production credentials |
 | `.github/` | Checks and deployment workflows | Application secrets in YAML |
 | `docs/` | Setup, decisions and developer guides | Private user content |
 

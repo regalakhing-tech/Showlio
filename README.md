@@ -45,7 +45,7 @@ While editing styles, run `npm run watch:css` in a second terminal. After pullin
 Showlio/
 ├── .github/             # CI/CD and dependency updates
 ├── api/index.php        # PHP API front controller
-├── database/            # Reserved schema/policy files and implementation notes
+├── database/            # Data model map and database notes
 ├── docs/                # Structure, deployment and implementation decisions
 ├── public/              # Browser-safe HTML and assets only
 │   ├── index.html
@@ -59,7 +59,8 @@ Showlio/
 │   ├── middleware/      # Future authentication and request validation
 │   ├── services/        # Future Supabase, Storage and Gemini integrations
 │   └── styles/          # Tailwind source
-├── tests/               # HTTP integration tests
+├── supabase/            # CLI config, auth email template and versioned SQL migrations
+├── tests/               # HTTP, model and database access-rule tests
 ├── .env.example         # Variable names only
 ├── package.json         # Commands and pinned build tools
 ├── package-lock.json    # Reproducible dependencies

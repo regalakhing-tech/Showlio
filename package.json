@@ -4,7 +4,9 @@
   "private": true,
   "description": "Showlio PHP and Tailwind project foundation",
   "type": "module",
-  "engines": { "node": ">=24.0.0 <26" },
+  "engines": {
+    "node": ">=24.0.0 <26"
+  },
   "scripts": {
     "dev": "php -S 127.0.0.1:8000 -t public scripts/router.php",
     "build": "node scripts/build.mjs",
@@ -17,6 +19,7 @@
     "deploy:production": "node scripts/deploy.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.16",
     "@tailwindcss/cli": "4.3.3",
     "jsqr": "1.4.0",
     "tailwindcss": "4.3.3"
