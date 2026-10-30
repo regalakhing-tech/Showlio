@@ -8,7 +8,7 @@
     "node": ">=24.0.0 <26"
   },
   "scripts": {
-    "dev": "php -S 127.0.0.1:8000 -t public scripts/router.php",
+    "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "watch:css": "tailwindcss -i src/styles/app.css -o public/assets/css/app.css --watch",
     "watch:workspace": "tailwindcss -i src/styles/workspace.css -o public/assets/css/workspace.css --watch",
@@ -16,7 +16,8 @@
     "watch:portfolio": "tailwindcss -i src/styles/portfolio.css -o public/assets/css/portfolio.css --watch",
     "check": "node scripts/check.mjs",
     "test": "node --test tests/*.test.mjs",
-    "deploy:production": "node scripts/deploy.mjs"
+    "deploy:production": "node scripts/deploy.mjs",
+    "vercel:env": "node scripts/vercel-env.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.16",

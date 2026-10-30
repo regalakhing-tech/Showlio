@@ -1,4 +1,5 @@
-.ws-settings {
+.ws-settings,
+.ws-skill-picker {
   --ws-settings-navy: #0c153c;
   --ws-settings-muted: #61709a;
   --ws-settings-blue: #0068ff;
@@ -153,7 +154,7 @@
 
 .ws-settings .ws-btn.ws-primary {
   border: 1px solid transparent;
-  background: linear-gradient(110deg, #0068ff, #7020ff);
+  background: linear-gradient(110deg, #0068ff, #7020ff) border-box;
   color: #fff;
   box-shadow: 0 3px 8px #4a46e51c;
 }
@@ -993,5 +994,314 @@
   .ws-settings *::before,
   .ws-settings *::after {
     transition: none !important;
+  }
+}
+
+/* Creators without a photo get their initials, sized like the photo they replace. */
+.ws-settings-avatar-wrap .ws-monogram {
+  width: 100%;
+  height: 100%;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  font-size: 28px;
+}
+
+.ws-settings-account-summary .ws-monogram {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  font-size: 22px;
+}
+
+/* Add skills dialog: type or tap suggestions, see what is on the profile, finish with Done. */
+.ws-skill-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+}
+
+.ws-dialog .ws-skill-intro {
+  margin: -8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ws-settings-muted);
+}
+
+.ws-skill-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.ws-skill-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 5px 5px 5px 14px;
+  border: 1px solid #d9e2f1;
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.ws-skill-input:focus-within {
+  border-color: #7cabff;
+  box-shadow: 0 0 0 4px #0068ff14;
+}
+
+.ws-skill-input > .ws-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: #8a97b8;
+}
+
+.ws-skill-input input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ws-settings-navy);
+  font: inherit;
+  font-size: 15px;
+  caret-color: var(--ws-settings-blue);
+}
+
+.ws-skill-input input::placeholder {
+  color: #7f8aa6;
+}
+
+.ws-skill-input input[aria-invalid] {
+  caret-color: #c62f45;
+}
+
+.ws-skill-input .ws-btn {
+  min-height: 40px;
+  padding: 8px 16px;
+  gap: 6px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ws-skill-input .ws-btn .ws-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ws-skill-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 0 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ws-settings-muted);
+}
+
+.ws-dialog .ws-skill-error {
+  margin: 0;
+}
+
+.ws-skill-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.ws-skill-section h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--ws-settings-navy);
+}
+
+.ws-skill-chosen,
+.ws-skill-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ws-skill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid #d3e3ff;
+  border-radius: 10px;
+  background: #edf4ff;
+  color: #1f4fa8;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ws-skill-tag button {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #5d84c9;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.ws-skill-tag button:hover {
+  background: #dce9ff;
+  color: #1f4fa8;
+}
+
+.ws-skill-tag .ws-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.ws-dialog .ws-skill-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ws-settings-muted);
+}
+
+.ws-skill-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 -2px;
+  padding: 2px 2px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ws-skill-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ws-skill-tabs[hidden] {
+  display: none;
+}
+
+.ws-skill-tabs button {
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #f2f5fb;
+  color: #4a587e;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+
+.ws-skill-tabs button:hover {
+  background: #e7ecf6;
+  color: var(--ws-settings-navy);
+}
+
+.ws-skill-tabs button[aria-pressed="true"] {
+  background: var(--ws-settings-navy);
+  color: #fff;
+}
+
+.ws-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 13px 6px 10px;
+  border: 1px solid #dde4f1;
+  border-radius: 999px;
+  background: #fff;
+  color: #2a3a63;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s, transform .25s cubic-bezier(.16, 1, .3, 1);
+}
+
+.ws-skill-chip .ws-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--ws-settings-blue);
+}
+
+.ws-skill-chip:hover {
+  border-color: #b8cdf6;
+  background: #f6f9ff;
+}
+
+.ws-skill-chip:active {
+  transform: scale(.96);
+}
+
+.ws-skill-chip[aria-pressed="true"] {
+  border-color: #9fc0ff;
+  background: #e8f1ff;
+  color: #0d4fc9;
+  font-weight: 600;
+}
+
+.ws-skill-tabs button:focus-visible,
+.ws-skill-chip:focus-visible,
+.ws-skill-tag button:focus-visible {
+  outline: 2px solid var(--ws-settings-blue);
+  outline-offset: 2px;
+}
+
+.ws-skill-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ws-settings-border);
+}
+
+.ws-skill-footer small {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ws-settings-muted);
+}
+
+.ws-skill-footer .ws-btn {
+  min-width: 110px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .ws-skill-input {
+    padding-left: 12px;
+  }
+
+  .ws-skill-input .ws-btn {
+    padding-inline: 12px;
+  }
+
+  .ws-skill-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-skill-chip,
+  .ws-skill-input,
+  .ws-skill-tabs button {
+    transition: none;
   }
 }

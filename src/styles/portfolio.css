@@ -111,6 +111,8 @@ body.pb-body {
 .pb-field :where(input, textarea, select)[aria-invalid="true"] { border-color: #d25160; box-shadow: 0 0 0 4px #d251601a; animation: pb-shake .4s; }
 .pb-field small, .pb-hint { color: #7c8bab; font-size: 12px; line-height: 1.5; font-weight: 400; }
 .pb-hint a { color: var(--pb-blue); }
+.pb-sync-note { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; border: 1px solid #d5e6ff; border-radius: 12px; background: #f1f7ff; color: #24427a; font-size: 13px; line-height: 1.5; }
+.pb-sync-note .pb-icon { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; color: var(--pb-blue); }
 .pb-tip { display: inline-grid; color: #95a5c2; cursor: help; }
 .pb-tip .pb-icon { width: 16px; height: 16px; }
 .pb-count-wrap { position: relative; }
@@ -165,7 +167,7 @@ body.pb-body {
 .pb-btn { position: relative; display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 42px; padding: 10px 17px; border: 1px solid transparent; border-radius: 10px; color: var(--pb-ink); font-size: 14px; font-weight: 600; line-height: 1.4; white-space: nowrap; background: transparent; transition: background .2s, border-color .2s, box-shadow .3s var(--pb-ease), transform .3s var(--pb-ease), color .2s, filter .2s; }
 .pb-btn:active:not(:disabled) { transform: translateY(1px) scale(.985); }
 .pb-btn .pb-icon { width: 19px; height: 19px; }
-.pb-primary { color: white; background: var(--pb-gradient); background-size: 140% 100%; background-position: 0 0; box-shadow: 0 6px 16px -6px #1f5cff8c; overflow: hidden; isolation: isolate; }
+.pb-primary { color: white; background: var(--pb-gradient) border-box; background-size: 140% 100%; background-position: 0 0; box-shadow: 0 6px 16px -6px #1f5cff8c; overflow: hidden; isolation: isolate; }
 .pb-primary::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 30%, #ffffff40 50%, transparent 70%); transform: translateX(-120%); transition: transform .8s var(--pb-ease); }
 .pb-primary:hover:not(:disabled) { background-position: 100% 0; box-shadow: 0 10px 24px -8px #3b4dffa6; transform: translateY(-1px); }
 .pb-primary:hover:not(:disabled)::after { transform: translateX(120%); }

@@ -1,0 +1,465 @@
+/* Dialogs scroll without a visible scrollbar. */
+.ws-dialog {
+  scrollbar-width: none;
+}
+
+.ws-dialog::-webkit-scrollbar {
+  display: none;
+}
+
+/* Project dialog: photos left, story and conversation right. */
+.ws-pv {
+  --pv-navy: #0c153c;
+  --pv-muted: #5f6d93;
+  --pv-line: #e6ebf4;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.ws-pv-media {
+  position: sticky;
+  top: 0;
+}
+
+.ws-pv-media .ws-gallery {
+  margin: 0;
+}
+
+.ws-pv-cover {
+  overflow: hidden;
+  border-radius: 16px;
+  background: #0f1733;
+}
+
+.ws-pv-cover img,
+.ws-pv-cover .ws-pcover {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.ws-pv-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.ws-pv-creator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ws-pv-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-pv-person .ws-avatar {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+}
+
+.ws-pv-person span {
+  display: grid;
+  min-width: 0;
+}
+
+.ws-pv-person strong {
+  overflow: hidden;
+  font-size: 15px;
+  color: var(--pv-navy);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-pv-person small {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--pv-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-pv-person:hover strong {
+  color: #0068ff;
+}
+
+.ws-pv-follow {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ws-pv-follow .ws-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.ws-dialog .ws-pv-description {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #3f4d74;
+  white-space: pre-line;
+}
+
+.ws-pv .ws-pills {
+  margin: 0;
+}
+
+.ws-pv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--pv-line);
+  border-bottom: 1px solid var(--pv-line);
+}
+
+.ws-pv-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #dde4f1;
+  border-radius: 999px;
+  background: #fff;
+  color: #2a3a63;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s, transform .2s cubic-bezier(.16, 1, .3, 1);
+}
+
+.ws-pv-action .ws-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.ws-pv-action b {
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-pv-action:hover {
+  border-color: #c4d3ef;
+  background: #f7f9ff;
+}
+
+.ws-pv-action:active {
+  transform: scale(.96);
+}
+
+.ws-pv-action.is-liked {
+  border-color: #ffc7d4;
+  background: #fff1f4;
+  color: #e0245e;
+}
+
+.ws-pv-action.is-saved {
+  border-color: #bcd3ff;
+  background: #eef4ff;
+  color: #0b57d0;
+}
+
+.ws-pv-action.is-liked .ws-icon,
+.ws-pv-action.is-saved .ws-icon {
+  fill: currentColor;
+}
+
+.ws-pv-action:focus-visible,
+.ws-pv-person:focus-visible,
+.ws-pv-comment-delete:focus-visible,
+.ws-pv-delete:focus-visible {
+  outline: 2px solid #0068ff;
+  outline-offset: 2px;
+}
+
+.ws-pv-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--pv-muted);
+  font-size: 13px;
+}
+
+.ws-pv-stat .ws-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.ws-pv-stat b {
+  color: #2a3a63;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-pv-comments {
+  display: grid;
+  gap: 12px;
+}
+
+.ws-pv-comments h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--pv-navy);
+}
+
+.ws-pv-comments h3 span {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #eef2fa;
+  color: #3e5182;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-pv-comment-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-pv-comment {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  animation: ws-pv-comment-in .35s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+@keyframes ws-pv-comment-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.ws-pv-comment > .ws-avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.ws-pv-comment > div {
+  padding: 9px 12px 10px;
+  border-radius: 4px 14px 14px 14px;
+  background: #f4f6fb;
+}
+
+.ws-dialog .ws-pv-comment-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 2px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ws-pv-comment-head strong {
+  color: var(--pv-navy);
+}
+
+.ws-pv-comment-head time {
+  color: #7a86a6;
+  font-size: 12px;
+}
+
+.ws-pv-comment-delete {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8a94b0;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ws-pv-comment-delete:hover {
+  color: #c62f45;
+}
+
+.ws-dialog .ws-pv-comment-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #26355c;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.ws-pv-comment.is-loading {
+  animation: none;
+}
+
+.ws-pv-comment.is-loading > i,
+.ws-pv-comment.is-loading span i {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(110deg, #edf1f8 30%, #f7f9fd 50%, #edf1f8 70%) 0 0 / 200% 100%;
+  animation: ws-photo-shimmer 1.2s linear infinite;
+}
+
+.ws-pv-comment.is-loading > i {
+  width: 36px;
+  height: 36px;
+}
+
+.ws-pv-comment.is-loading span {
+  display: grid;
+  gap: 7px;
+  padding-top: 4px;
+}
+
+.ws-pv-comment.is-loading span i {
+  height: 10px;
+}
+
+.ws-pv-comment.is-loading span i:last-child {
+  width: 60%;
+}
+
+.ws-dialog .ws-pv-empty {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed #d6deee;
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--pv-muted);
+  text-align: center;
+  list-style: none;
+}
+
+/* The comment box stays reachable at the bottom while the conversation scrolls. */
+.ws-pv-comment-form {
+  position: sticky;
+  bottom: -29px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin: 0 -4px;
+  padding: 10px 4px 14px;
+  background: #fff;
+}
+
+.ws-pv-comment-form > .ws-avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.ws-pv-comment-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  max-height: 160px;
+  padding: 10px 14px;
+  border: 1px solid #dde4f1;
+  border-radius: 20px;
+  background: #f8faff;
+  color: var(--pv-navy);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  resize: none;
+  outline: none;
+  caret-color: #0068ff;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+
+.ws-pv-comment-form textarea:focus {
+  border-color: #7cabff;
+  background: #fff;
+  box-shadow: 0 0 0 4px #0068ff14;
+}
+
+.ws-pv-comment-form textarea::placeholder {
+  color: #7f8aa6;
+}
+
+.ws-pv-comment-form .ws-btn {
+  width: 42px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.ws-pv-comment-form .ws-btn .ws-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.ws-pv-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 2px;
+  border: 0;
+  background: none;
+  color: #b4283f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ws-pv-delete .ws-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.ws-pv-delete:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 860px) {
+  .ws-pv {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .ws-pv-media {
+    position: static;
+  }
+
+  .ws-pv-comment-form {
+    bottom: -23px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-pv-comment,
+  .ws-pv-comment.is-loading > i,
+  .ws-pv-comment.is-loading span i {
+    animation: none;
+  }
+
+  .ws-pv-action {
+    transition: none;
+  }
+}

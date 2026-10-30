@@ -1,0 +1,622 @@
+/* My portfolio (the creator's studio) and Saved (a reading list): each looks unlike Explore. */
+
+.ws-mine,
+.ws-saved {
+  --lib-navy: #0c153c;
+  --lib-muted: #5f6d93;
+  --lib-line: #e6ebf4;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* My portfolio */
+.ws-mine-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 72px 28px 24px;
+  background:
+    linear-gradient(180deg, transparent 0 56px, #fff 56px),
+    linear-gradient(100deg, #10b3ff 0%, #2f5bff 45%, #7b2dff 100%) top / 100% 56px no-repeat;
+  border-bottom: 1px solid var(--lib-line);
+}
+
+.ws-mine-identity {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ws-mine-identity .ws-avatar.ws-mine-avatar {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  margin-top: -44px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 10px 24px -14px #1d2b5c80;
+  font-size: 32px;
+}
+
+.ws-mine-identity h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: var(--lib-navy);
+}
+
+.ws-mine-identity p {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--lib-muted);
+}
+
+.ws-mine-identity .ws-mine-summary {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3e5182;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-mine-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ws-mine-hero-actions .ws-btn,
+.ws-mine-empty .ws-btn,
+.ws-saved-empty .ws-btn {
+  min-height: 44px;
+  padding-inline: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 8px;
+}
+
+.ws-mine-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 28px 0;
+  padding: 12px 14px;
+  border: 1px solid #f2d39c;
+  border-radius: 14px;
+  background: #fff8ea;
+  color: #7a4f00;
+}
+
+.ws-mine-note > .ws-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.ws-mine-note p {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+}
+
+.ws-mine-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 28px 14px;
+}
+
+.ws-mine-toolbar h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--lib-navy);
+}
+
+.ws-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: #f1f4fa;
+}
+
+.ws-segmented button {
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #4a587e;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, color .2s, box-shadow .2s;
+}
+
+.ws-segmented button[aria-pressed="true"] {
+  background: #fff;
+  color: var(--lib-navy);
+  box-shadow: 0 1px 3px #1b2b5426;
+}
+
+.ws-segmented button:focus-visible {
+  outline: 2px solid #0068ff;
+  outline-offset: 2px;
+}
+
+.ws-mine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  padding: 0 28px 28px;
+}
+
+.ws-mine-card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  border: 1px solid var(--lib-line);
+  border-radius: 16px;
+  background: #fff;
+  transition: box-shadow .25s, transform .25s cubic-bezier(.16, 1, .3, 1);
+  animation: ws-lib-in .45s cubic-bezier(.16, 1, .3, 1) calc(var(--i, 0) * 40ms) both;
+}
+
+.ws-mine-card:hover {
+  box-shadow: 0 16px 32px -22px #1d2b5c66;
+  transform: translateY(-2px);
+}
+
+@keyframes ws-lib-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+.ws-mine-cover {
+  position: relative;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: #eef2f9;
+  aspect-ratio: 16 / 10;
+  cursor: pointer;
+}
+
+.ws-mine-cover img,
+.ws-mine-cover .ws-pcover {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ws-mine-status {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #0f8a5fe6;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ws-mine-status.is-draft {
+  background: #5f6d93e6;
+}
+
+.ws-mine-body {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 14px 16px 4px;
+}
+
+.ws-mine-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--lib-navy);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-mine-title:hover {
+  color: #0068ff;
+}
+
+.ws-mine-body .ws-pills {
+  margin: 0;
+}
+
+.ws-mine-stats {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  color: var(--lib-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-mine-stats span,
+.ws-mine-stats button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ws-mine-stats button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ws-mine-stats .ws-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ws-mine-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+
+.ws-mine-actions .ws-btn {
+  flex: 1;
+  min-height: 38px;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.ws-mine-actions .ws-btn .ws-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ws-mine-delete {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #f2c4cc;
+  border-radius: 10px;
+  background: #fff;
+  color: #b4283f;
+}
+
+.ws-mine-delete:hover {
+  background: #fff3f5;
+}
+
+.ws-mine-empty,
+.ws-saved-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 8px 28px 32px;
+  padding: 44px 24px;
+  border: 2px dashed #d6deee;
+  border-radius: 20px;
+  text-align: center;
+}
+
+.ws-mine-empty-icon,
+.ws-saved-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  background: #e8f0ff;
+  color: #0068ff;
+}
+
+.ws-mine-empty-icon .ws-icon,
+.ws-saved-empty-icon .ws-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.ws-mine-empty h2,
+.ws-saved-empty h2 {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--lib-navy);
+}
+
+.ws-mine-empty p,
+.ws-saved-empty p {
+  max-width: 46ch;
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--lib-muted);
+}
+
+/* Saved */
+.ws-saved-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 28px 28px 18px;
+  border-bottom: 1px solid var(--lib-line);
+}
+
+.ws-saved-head h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: var(--lib-navy);
+}
+
+.ws-saved-head p {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--lib-muted);
+}
+
+.ws-saved-total {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #0b57d0;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-saved-list {
+  display: grid;
+}
+
+.ws-saved-row {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--lib-line);
+  transition: background .2s;
+  animation: ws-lib-in .4s cubic-bezier(.16, 1, .3, 1) calc(var(--i, 0) * 35ms) both;
+}
+
+.ws-saved-row:last-child {
+  border-bottom: 0;
+}
+
+.ws-saved-row:hover {
+  background: #f8faff;
+}
+
+.ws-saved-thumb {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: #eef2f9;
+  aspect-ratio: 16 / 10;
+  cursor: pointer;
+}
+
+.ws-saved-thumb img,
+.ws-saved-thumb .ws-pcover {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ws-saved-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ws-saved-title {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--lib-navy);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-saved-title:hover {
+  color: #0068ff;
+}
+
+.ws-saved-description {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--lib-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ws-saved-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 2px;
+}
+
+.ws-saved-meta .ws-pill {
+  margin: 0;
+}
+
+.ws-saved-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #2a3a63;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ws-saved-person .ws-avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
+}
+
+.ws-saved-counts {
+  display: inline-flex;
+  gap: 12px;
+  color: var(--lib-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-saved-counts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ws-saved-counts .ws-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.ws-saved-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #bcd3ff;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #0b57d0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s;
+}
+
+.ws-saved-remove .ws-icon {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.ws-saved-remove:hover {
+  border-color: #f2c4cc;
+  background: #fff3f5;
+  color: #b4283f;
+}
+
+.ws-saved-remove:hover span {
+  font-size: 0;
+}
+
+.ws-saved-remove:hover span::after {
+  content: "Remove";
+  font-size: 13px;
+}
+
+.ws-saved-remove:focus-visible,
+.ws-saved-title:focus-visible,
+.ws-saved-person:focus-visible,
+.ws-saved-thumb:focus-visible,
+.ws-mine-cover:focus-visible,
+.ws-mine-title:focus-visible {
+  outline: 2px solid #0068ff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .ws-mine-hero {
+    padding: 64px 18px 20px;
+  }
+
+  .ws-mine-identity .ws-avatar.ws-mine-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .ws-mine-hero-actions {
+    width: 100%;
+  }
+
+  .ws-mine-hero-actions .ws-btn {
+    flex: 1;
+  }
+
+  .ws-mine-note {
+    flex-wrap: wrap;
+    margin-inline: 18px;
+  }
+
+  .ws-mine-toolbar,
+  .ws-saved-head {
+    padding-inline: 18px;
+  }
+
+  .ws-mine-grid {
+    padding: 0 18px 22px;
+  }
+
+  .ws-saved-row {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px 18px;
+  }
+
+  .ws-saved-remove {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .ws-mine-empty,
+  .ws-saved-empty {
+    margin-inline: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-mine-card,
+  .ws-saved-row {
+    animation: none;
+    transition: none;
+  }
+}

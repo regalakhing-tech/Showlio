@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Your Showlio password reset code</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f6fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#18213d;">
+  <!-- Inbox preview text. Gmail offers its own "Copy code" button for code emails. No links on purpose: Gmail blocks code emails that link to a website as possible phishing. -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your Showlio password reset code is {{ .Token }}. It expires in 1 hour.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f6fc;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#ffffff;border:1px solid #e3e8f4;border-radius:20px;">
+          <tr>
+            <td style="height:6px;line-height:6px;font-size:0;border-radius:20px 20px 0 0;background:#2f5bff;background-image:linear-gradient(95deg,#10b3ff 0%,#2f5bff 48%,#7b2dff 100%);">&nbsp;</td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:32px 32px 8px;">
+              <img src="cid:showlio-logo" width="150" height="50" alt="Showlio" style="display:block;width:150px;height:auto;border:0;">
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px 0;text-align:center;">
+              <h1 style="margin:0;font-size:24px;line-height:1.3;font-weight:700;color:#121a36;">Reset your password</h1>
+              <p style="margin:12px 0 0;font-size:15px;line-height:1.6;color:#53607f;">{{ if .Data.full_name }}Hi {{ .Data.full_name }}, we{{ else }}We{{ end }} got a request to reset your Showlio password. Enter this code with your new password.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:24px 32px 8px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="padding:18px 28px;background:#f2f5ff;border:2px dashed #b9c6ff;border-radius:14px;">
+                    <div style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:34px;line-height:1;font-weight:700;letter-spacing:10px;color:#2346e8;-webkit-user-select:all;user-select:all;">{{ .Token }}</div>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:10px 0 0;font-size:12px;line-height:1.5;color:#7b86a3;">Tap and hold the code to copy it · Expires in 1 hour</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 32px 32px;">
+              <p style="margin:0;padding-top:20px;border-top:1px solid #edf0f7;font-size:13px;line-height:1.6;color:#7b86a3;text-align:center;">Didn’t ask for this? You can ignore this email. Your password stays the same.</p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:18px 0 0;font-size:12px;line-height:1.5;color:#98a2bd;">Showlio · Show your work. Build your portfolio.</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

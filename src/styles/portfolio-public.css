@@ -194,6 +194,8 @@
 .pf-detail-role{font-size:13px;color:#5e6f8f;margin-top:8px!important}
 .pf-detail-description{white-space:pre-line;color:#4e5c78;line-height:1.7;margin-top:18px!important}
 .pf-detail>.pf-button{margin-top:25px}
+.pf-detail-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:22px}
+.pf-detail-gallery img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:#eef2f9}
 @container (max-width:900px){
   .pf-container{width:calc(100% - 64px)}
   .pf-header-inner{gap:20px}.pf-nav{gap:20px;font-size:12px}

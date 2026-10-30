@@ -1,0 +1,536 @@
+/* Creator profile dialog: identity, totals, about, recent work and the portfolio link. */
+
+.ws-cp {
+  --cp-navy: #0c153c;
+  --cp-muted: #5f6d93;
+  --cp-line: #e6ebf4;
+  display: grid;
+  gap: 18px;
+}
+
+.ws-cp-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, #e3f2ff 0%, transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, #f0e8ff 0%, transparent 55%),
+    #f7f9fe;
+}
+
+.ws-cp-identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.ws-cp-identity .ws-avatar.ws-cp-avatar {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 12px 26px -16px #1d2b5c99;
+  font-size: 32px;
+}
+
+.ws-cp-name {
+  min-width: 0;
+}
+
+.ws-dialog .ws-cp-name h3 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: var(--cp-navy);
+}
+
+.ws-dialog .ws-cp-name > p {
+  margin: 3px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #3d4b70;
+}
+
+.ws-cp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--cp-muted);
+}
+
+.ws-cp-meta li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ws-cp-meta .ws-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.ws-cp-availability {
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
+  background: #e5f7ee;
+  color: #0b7a4b;
+  font-weight: 600;
+}
+
+.ws-cp-availability i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ws-cp-availability.is-showcasing {
+  background: #ecf2ff;
+  color: #0b57d0;
+}
+
+.ws-cp-availability.is-unavailable {
+  background: #f1f3f8;
+  color: #5f6d93;
+}
+
+.ws-cp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ws-cp-actions .ws-btn {
+  min-height: 42px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ws-cp-actions .ws-btn .ws-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.ws-cp-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #ffe2a8;
+  border-radius: 12px;
+  background: #fff8e8;
+}
+
+.ws-cp-note > .ws-icon {
+  flex-shrink: 0;
+  color: #b7791f;
+}
+
+.ws-dialog .ws-cp-note p {
+  flex: 1;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #5a4a26;
+}
+
+.ws-cp-note.is-error {
+  border-color: #ffd4d4;
+  background: #fff4f4;
+}
+
+.ws-cp-note.is-error > .ws-icon {
+  color: #d64545;
+}
+
+.ws-cp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--cp-line);
+  border-radius: 14px;
+}
+
+.ws-cp-stats > div {
+  padding: 12px 16px;
+}
+
+.ws-cp-stats > div + div {
+  border-left: 1px solid var(--cp-line);
+}
+
+.ws-cp-stats dt {
+  font-size: 12.5px;
+  color: var(--cp-muted);
+}
+
+.ws-cp-stats dd {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-weight: 750;
+  color: var(--cp-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-cp-body {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 26px;
+}
+
+.ws-dialog .ws-cp h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cp-navy);
+}
+
+.ws-cp-about h4 + * {
+  margin-bottom: 18px;
+}
+
+.ws-dialog .ws-cp-bio {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #3d4b70;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.ws-cp-skills,
+.ws-cp-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-cp-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.ws-cp-skills li {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #1f3f86;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ws-cp-skills li.is-more {
+  background: #f1f3f8;
+  color: var(--cp-muted);
+}
+
+.ws-cp-links {
+  display: grid;
+  gap: 6px;
+}
+
+.ws-cp-links a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--cp-line);
+  border-radius: 11px;
+  color: var(--cp-navy);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color .2s, background .2s;
+}
+
+.ws-cp-links a:hover {
+  border-color: #c9d8f3;
+  background: #f7faff;
+}
+
+.ws-cp-links a > span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.ws-cp-links small {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--cp-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-cp-links .ws-icon {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  color: #0068ff;
+}
+
+.ws-cp-links .ws-icon:last-child {
+  width: 15px;
+  height: 15px;
+  color: #9aa7c4;
+}
+
+.ws-cp-work-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ws-cp-work-head a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #0068ff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ws-cp-work-head .ws-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.ws-cp-work-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ws-cp-work-card {
+  display: grid;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--cp-line);
+  border-radius: 13px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .35s cubic-bezier(.16, 1, .3, 1), box-shadow .35s;
+}
+
+.ws-cp-work-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 26px -18px #1d3a7a66;
+}
+
+.ws-cp-work-card:focus-visible {
+  outline: 2px solid #0068ff;
+  outline-offset: 2px;
+}
+
+.ws-cp-work-cover {
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  background: #eef2f9;
+}
+
+.ws-cp-work-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ws-cp-work-cover .ws-pcover {
+  width: 166.67%;
+  height: 166.67%;
+  transform: scale(.6);
+  transform-origin: 0 0;
+}
+
+.ws-cp-work-blank {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #99b0d8;
+}
+
+.ws-cp-work-text {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px 12px;
+}
+
+.ws-cp-work-text strong {
+  overflow: hidden;
+  font-size: 14px;
+  color: var(--cp-navy);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-cp-work-text small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--cp-muted);
+}
+
+.ws-cp-work-text .ws-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.ws-cp-work-card.is-loading {
+  cursor: default;
+}
+
+.ws-cp-work-card.is-loading:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.ws-dialog .ws-cp-empty {
+  padding: 26px 16px;
+  border: 1px dashed #d6deee;
+  border-radius: 13px;
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.ws-cp-skeleton {
+  display: block;
+  height: 12px;
+  margin-bottom: 9px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #eef2f9 0%, #f7f9fd 50%, #eef2f9 100%) 0 0 / 200% 100%;
+  animation: ws-cp-shimmer 1.3s linear infinite;
+}
+
+.ws-cp-skeleton.is-short {
+  width: 60%;
+}
+
+@keyframes ws-cp-shimmer {
+  to { background-position: -200% 0; }
+}
+
+.ws-cp-share {
+  display: grid;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--cp-line);
+}
+
+.ws-cp-url {
+  display: flex;
+  gap: 8px;
+}
+
+.ws-cp-url input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #dbe5f5;
+  border-radius: 9px;
+  background: #f7f9fd;
+  color: #2a3a63;
+  font: inherit;
+  font-size: 13px;
+}
+
+.ws-cp-url input:focus-visible {
+  outline: 2px solid #0068ff;
+  outline-offset: 1px;
+}
+
+.ws-cp-url .ws-btn .ws-icon {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 760px) {
+  .ws-cp-hero {
+    padding: 18px;
+  }
+
+  .ws-cp-identity {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .ws-cp-identity .ws-avatar.ws-cp-avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 24px;
+  }
+
+  .ws-dialog .ws-cp-name h3 {
+    font-size: 20px;
+  }
+
+  .ws-cp-actions {
+    width: 100%;
+  }
+
+  .ws-cp-actions .ws-btn {
+    flex: 1;
+  }
+
+  .ws-cp-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ws-cp-stats > div:nth-child(3) {
+    border-left: 0;
+  }
+
+  .ws-cp-stats > div:nth-child(n + 3) {
+    border-top: 1px solid var(--cp-line);
+  }
+
+  .ws-cp-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .ws-cp-work-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ws-cp-url {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-cp-skeleton {
+    animation: none;
+  }
+
+  .ws-cp-work-card {
+    transition: none;
+  }
+}

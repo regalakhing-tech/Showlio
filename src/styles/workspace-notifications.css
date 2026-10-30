@@ -1,0 +1,436 @@
+/* Notifications: one row per thing that happened, grouped by day, with the creator's totals beside them. */
+
+.ws-inbox,
+.ws-inbox-stats {
+  --inbox-navy: #0c153c;
+  --inbox-muted: #5f6d93;
+  --inbox-line: #e6ebf4;
+  --lib-navy: var(--inbox-navy);
+}
+
+.ws-inbox {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ws-inbox-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 28px 28px 16px;
+}
+
+.ws-inbox-head h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: var(--inbox-navy);
+}
+
+.ws-inbox-head p {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--inbox-muted);
+}
+
+.ws-inbox-head .ws-btn:disabled {
+  opacity: .5;
+  box-shadow: none;
+  cursor: default;
+}
+
+.ws-inbox-tabs {
+  margin: 0 28px 4px;
+}
+
+.ws-inbox-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ws-inbox-tabs b {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e2e8f3;
+  color: #4a587e;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.ws-inbox-tabs button[aria-pressed="true"] b {
+  background: #0068ff;
+  color: #fff;
+}
+
+.ws-inbox-group h2 {
+  margin: 0;
+  padding: 18px 28px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--inbox-muted);
+}
+
+.ws-inbox-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-note {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px 0 0;
+  border-top: 1px solid var(--inbox-line);
+  transition: background .2s;
+  animation: ws-lib-in .4s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.ws-note:hover {
+  background: #f8faff;
+}
+
+.ws-note.is-unread {
+  background: #f3f8ff;
+}
+
+.ws-note.is-unread::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 11px;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: #0068ff;
+}
+
+.ws-note-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px 0 14px 28px;
+  border: 0;
+  background: none;
+  color: #2a3a63;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-note-main:focus-visible {
+  outline: 2px solid #0068ff;
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+
+.ws-note-avatar {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ws-note-avatar .ws-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  font-size: 15px;
+}
+
+.ws-note-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #5f6d93;
+  color: #fff;
+}
+
+.ws-note-badge .ws-icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.4;
+}
+
+.ws-note-badge.is-like { background: #f0306f; }
+.ws-note-badge.is-bookmark { background: #0068ff; }
+.ws-note-badge.is-follow { background: #7b2dff; }
+.ws-note-badge.is-comment { background: #0f9d6b; }
+
+.ws-note-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.ws-note-text > span {
+  display: block;
+}
+
+.ws-note-text strong {
+  font-weight: 650;
+  color: var(--inbox-navy);
+}
+
+.ws-note-text q {
+  display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--inbox-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ws-note-text time {
+  font-size: 12.5px;
+  color: #8190b2;
+}
+
+.ws-note.is-unread .ws-note-text time {
+  color: #0b57d0;
+  font-weight: 600;
+}
+
+.ws-note-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  opacity: .55;
+  transition: opacity .2s;
+}
+
+.ws-note:hover .ws-note-actions,
+.ws-note:focus-within .ws-note-actions {
+  opacity: 1;
+}
+
+.ws-note-actions button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: #5b6b91;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+
+.ws-note-actions button:hover {
+  background: #e9f0fc;
+  color: var(--inbox-navy);
+}
+
+.ws-note-actions button:focus-visible {
+  outline: 2px solid #0068ff;
+  outline-offset: 1px;
+}
+
+.ws-note-actions button.is-on {
+  color: #0068ff;
+}
+
+.ws-note-actions button.is-on .ws-icon {
+  fill: currentColor;
+}
+
+.ws-note-actions .ws-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.ws-inbox-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 56px 24px 64px;
+  border-top: 1px solid var(--inbox-line);
+  text-align: center;
+}
+
+.ws-inbox-empty > span {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+  border-radius: 18px;
+  background: #eef4ff;
+  color: #0068ff;
+}
+
+.ws-inbox-empty > span .ws-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.ws-inbox-empty h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--inbox-navy);
+}
+
+.ws-inbox-empty p {
+  max-width: 34ch;
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--inbox-muted);
+}
+
+/* Totals beside the list */
+.ws-inbox-stats {
+  padding: 20px;
+}
+
+.ws-inbox-stats h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--inbox-navy);
+}
+
+.ws-inbox-stats > p {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  color: var(--inbox-muted);
+}
+
+.ws-inbox-stats ul {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-inbox-stats li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--inbox-line);
+  font-size: 14px;
+  color: #2a3a63;
+}
+
+.ws-inbox-stats li > span:nth-child(2) {
+  flex: 1;
+}
+
+.ws-inbox-stats li b {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--inbox-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-inbox-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #0068ff;
+}
+
+.ws-inbox-stat-icon .ws-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.ws-inbox-stats .ws-btn {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .ws-inbox-head {
+    padding: 20px 16px 14px;
+  }
+
+  .ws-inbox-head h1 {
+    font-size: 24px;
+  }
+
+  .ws-inbox-head .ws-btn {
+    width: 100%;
+  }
+
+  .ws-inbox-tabs {
+    display: flex;
+    margin: 0 16px 4px;
+  }
+
+  .ws-inbox-tabs button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .ws-inbox-group h2 {
+    padding: 16px 16px 6px;
+  }
+
+  .ws-note {
+    align-items: flex-start;
+    padding-right: 8px;
+  }
+
+  .ws-note.is-unread::before {
+    top: 30px;
+    left: 5px;
+    margin-top: 0;
+  }
+
+  .ws-note-main {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0 14px 16px;
+  }
+
+  .ws-note-avatar .ws-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .ws-note-text {
+    font-size: 14px;
+  }
+
+  .ws-note-actions {
+    flex-direction: column;
+    gap: 0;
+    padding-top: 8px;
+    opacity: 1;
+  }
+
+  .ws-note-actions button {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-note {
+    animation: none;
+  }
+}

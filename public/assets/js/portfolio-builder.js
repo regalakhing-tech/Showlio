@@ -1,9 +1,9 @@
-import { createPortfolio, normalizePortfolio, validateStep, portfolioProgress, visibleWorks, reorderWorks, createPublishedSnapshot } from './portfolio-model.js';
+import { createPortfolio, normalizePortfolio, validateStep, portfolioProgress, visibleWorks, reorderWorks, createPublishedSnapshot, availabilityLabel } from './portfolio-model.js';
 import { loadDraft, saveDraft, saveSnapshot, loadSnapshot } from './portfolio-store.js';
 import { renderPortfolio, renderWorkDetail, escapeHtml as esc } from './portfolio-render.js';
 import { renderProfile, renderAbout, renderWorks, renderStyle, renderPublish, renderWorkForm } from './portfolio-editor.js';
 import { createQrSvg } from './portfolio-qr.js';
-import { defaultProfile } from './workspace-data.js';
+import { slotHeaders, rememberSlot } from './session-slot.js';
 import { withPreservedFocus } from './workspace-shared.js';
 
 const $ = selector => document.querySelector(selector);
@@ -19,6 +19,63 @@ const state = { portfolio: null, snapshot: null, step: 0, device: 'desktop', mob
 let saveTimer, toastTimer, revision = 0, saveQueue = Promise.resolve(), lastDialogFocus, editWork, imageToken = 0, dragId, savingPreview = false;
 const identityVersions = { logo: 0, avatar: 0 };
 let pendingImages = 0;
+
+// The portfolio's name, role, photo, bio, location, skills, website and Instagram are the
+// creator's Showlio profile: they load from the account, and edits here save back to it,
+// so the workspace, the community and every portfolio page show the same person.
+let account = null;
+let syncTimer, syncQueue = Promise.resolve();
+const slugFor = value => String(value ?? '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80).replace(/-$/, '');
+const accountFields = profile => JSON.stringify([profile.name, profile.role, profile.bio, profile.location, profile.skills, profile.website, profile.instagram, profile.avatar?.startsWith('data:') ? profile.avatar : ''].map(value => typeof value === 'string' ? value.trim() : value));
+const fromAccount = () => ({ name: account.name, role: account.headline, bio: account.bio, location: account.location, skills: account.skills, website: account.links.website, instagram: account.links.instagram, avatar: '' });
+async function accountRequest(method, body) {
+  let response;
+  try { response = await fetch('/api/profile', { method, headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...slotHeaders() }, body: body && JSON.stringify(body) }); }
+  catch { return { ok: false, data: { error: 'Can’t reach Showlio. Check your connection and try again.' } }; }
+  rememberSlot(response);
+  if (response.status === 401) { location.replace('/auth/#sign-in'); await new Promise(() => {}); }
+  return { ok: response.ok, data: await response.json().catch(() => ({})) };
+}
+/** Puts the account's details into the portfolio; true when anything changed. */
+function applyAccount() {
+  const profile = state.portfolio.profile;
+  const before = JSON.stringify(profile);
+  // A page name made from the old name follows the person; a custom one stays.
+  if (!profile.slug || profile.slug === slugFor(profile.name)) profile.slug = slugFor(account.username);
+  Object.assign(profile, { name: account.name, role: account.headline, bio: account.bio, location: account.location, skills: [...account.skills], website: account.links.website, instagram: account.links.instagram });
+  if (account.avatar) profile.avatar = account.avatar;
+  else if (!profile.avatar.startsWith('data:')) profile.avatar = '';
+  if (!profile.availability) profile.availability = availabilityLabel(account.availability);
+  return JSON.stringify(profile) !== before;
+}
+function scheduleAccountSync() {
+  if (!account) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { syncQueue = syncQueue.then(syncAccount); }, 1200);
+}
+async function syncAccount() {
+  const profile = state.portfolio.profile;
+  if (accountFields(profile) === accountFields(fromAccount())) return;
+  // Name, role and links must be valid on the profile; the step's own checks explain what to fix.
+  if (validateStep(state.portfolio, 0).some(error => ['profile.name', 'profile.role', 'profile.website', 'profile.instagram'].includes(error.field))) return;
+  const sent = accountFields(profile);
+  status('Updating your profile…', 'is-saving');
+  const { ok, data } = await accountRequest('PUT', {
+    name: profile.name, headline: profile.role, bio: profile.bio, location: profile.location, availability: account.availability, visible: account.visible,
+    skills: profile.skills, links: { ...account.links, website: profile.website.trim(), instagram: profile.instagram.trim() },
+    avatar: profile.avatar.startsWith('data:') ? profile.avatar : undefined,
+  });
+  if (!ok) {
+    status('Profile not updated', 'is-error');
+    notify(Object.values(data.errors ?? {})[0] ?? data.error ?? 'Your Showlio profile couldn’t be updated. Try again in a moment.');
+    return;
+  }
+  account = data.profile;
+  // The uploaded photo now lives in the account; keep its link instead of the local copy.
+  if (profile.avatar.startsWith('data:') && accountFields(profile) === sent && account.avatar) { profile.avatar = account.avatar; changed({ sync: false }); updatePreview(); }
+  status(state.dirty ? 'Unsaved changes' : 'Saved to your profile', state.dirty ? 'is-saving' : '');
+  if (accountFields(state.portfolio.profile) !== sent) scheduleAccountSync();
+}
 
 function status(message, kind = '') {
   const node = $('#pb-save-status');
@@ -80,7 +137,8 @@ function notify(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => node.classList.remove('is-visible'), 4200);
 }
-function changed() {
+function changed({ sync = true } = {}) {
+  if (sync) scheduleAccountSync();
   revision++;
   state.dirty = true;
   state.portfolio.updatedAt = Date.now();
@@ -107,6 +165,8 @@ async function persist() {
 }
 function previewUrl(snapshot = state.snapshot, community = false) {
   const url = new URL('/portfolio/view/', location.origin);
+  // The Showlio profile link is the live page anyone can open.
+  if (community && account) { url.searchParams.set('u', account.username); return url.href; }
   if (snapshot?.profile.slug) url.searchParams.set('slug', snapshot.profile.slug);
   else url.searchParams.set('draft', '1');
   if (community) url.searchParams.set('community', '1');
@@ -245,6 +305,7 @@ function addSkill() {
   const input = $('#pb-skill-input');
   const value = input.value.trim();
   if (!value) { input.focus(); return; }
+  if (state.portfolio.profile.skills.length >= 15) { notify('You can add up to 15 skills.'); return; }
   if (!state.portfolio.profile.skills.some(skill => skill.toLowerCase() === value.toLowerCase())) state.portfolio.profile.skills.push(value);
   changed(); renderMain();
   if (!reduced()) $('.pb-chips .pb-chip:last-child')?.classList.add('is-new');
@@ -281,7 +342,7 @@ function showShare(community = false, { celebrate = false, switching = false } =
   const p = state.snapshot.profile;
   const url = previewUrl(state.snapshot, community);
   const other = previewUrl(state.snapshot, !community);
-  openModal('Share your portfolio', `<div class="pb-modal-body">${celebrate ? `<p class="pb-share-success">${i('check-circle')}Your portfolio is ready to share</p>` : ''}<div class="pb-share-tabs${switching ? ' is-switching' : ''}" data-active="${community ? 'community' : 'portfolio'}" aria-label="Choose what to share"><button type="button" data-share-tab="portfolio" class="${community ? '' : 'is-active'}" aria-pressed="${!community}">Portfolio website</button><button type="button" data-share-tab="community" class="${community ? 'is-active' : ''}" aria-pressed="${community}">Showlio profile</button></div><div class="pb-share-person">${p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : `<span class="pb-step-user-avatar">${esc(p.name.slice(0, 1))}</span>`}<div><strong>${esc(p.name)}</strong><p>${esc(p.role)}</p></div></div><div class="pb-qr">${createQrSvg(url)}</div><p class="pb-qr-caption">Scan to open this saved preview</p><label class="pb-field" for="pb-share-url">${community ? 'Showlio profile preview link' : 'Public portfolio link'}</label><div class="pb-copy-row pb-copy-inline"><input id="pb-share-url" readonly value="${esc(url)}"><button class="pb-icon-button" data-action="copy-share" type="button" aria-label="Copy link" title="Copy link">${i('copy')}${i('check')}</button></div><div class="pb-share-actions"><button class="pb-btn pb-outline" type="button" data-action="download-qr" data-qr-link="${esc(url)}">${i('download')} Download QR</button><a class="pb-btn pb-primary" href="${esc(url)}" target="_blank" rel="noopener">Open ${community ? 'profile' : 'portfolio'} ${i('external')}</a></div><hr class="pb-share-divider"><label class="pb-field" for="pb-share-other">${community ? 'Your portfolio website' : 'Your Showlio profile'}</label><div class="pb-copy-row"><input id="pb-share-other" readonly value="${esc(other)}"><button class="pb-btn pb-outline" data-action="copy-other" type="button">${i('copy')}${i('check')}<span>Copy link</span></button></div><p class="pb-modal-note">Your portfolio shows your work. Your Showlio profile connects you to the community. Both previews are saved in this browser; download an HTML copy to take your portfolio anywhere.</p><button class="pb-btn pb-ghost" type="button" data-action="export">${i('download')}Download portfolio HTML</button></div>`, 'Let people explore your work, with or without a Showlio account.');
+  openModal('Share your portfolio', `<div class="pb-modal-body">${celebrate ? `<p class="pb-share-success">${i('check-circle')}Your portfolio is ready to share</p>` : ''}<div class="pb-share-tabs${switching ? ' is-switching' : ''}" data-active="${community ? 'community' : 'portfolio'}" aria-label="Choose what to share"><button type="button" data-share-tab="portfolio" class="${community ? '' : 'is-active'}" aria-pressed="${!community}">Portfolio website</button><button type="button" data-share-tab="community" class="${community ? 'is-active' : ''}" aria-pressed="${community}">Showlio profile</button></div><div class="pb-share-person">${p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : `<span class="pb-step-user-avatar">${esc(p.name.slice(0, 1))}</span>`}<div><strong>${esc(p.name)}</strong><p>${esc(p.role)}</p></div></div><div class="pb-qr">${createQrSvg(url)}</div><p class="pb-qr-caption">Scan to open this saved preview</p><label class="pb-field" for="pb-share-url">${community ? 'Showlio profile preview link' : 'Public portfolio link'}</label><div class="pb-copy-row pb-copy-inline"><input id="pb-share-url" readonly value="${esc(url)}"><button class="pb-icon-button" data-action="copy-share" type="button" aria-label="Copy link" title="Copy link">${i('copy')}${i('check')}</button></div><div class="pb-share-actions"><button class="pb-btn pb-outline" type="button" data-action="download-qr" data-qr-link="${esc(url)}">${i('download')} Download QR</button><a class="pb-btn pb-primary" href="${esc(url)}" target="_blank" rel="noopener">Open ${community ? 'profile' : 'portfolio'} ${i('external')}</a></div><hr class="pb-share-divider"><label class="pb-field" for="pb-share-other">${community ? 'Your portfolio website' : 'Your Showlio profile'}</label><div class="pb-copy-row"><input id="pb-share-other" readonly value="${esc(other)}"><button class="pb-btn pb-outline" data-action="copy-other" type="button">${i('copy')}${i('check')}<span>Copy link</span></button></div><p class="pb-modal-note">Your portfolio shows your work. Your Showlio profile connects you to the community. Your Showlio profile link is live and always up to date. The portfolio website preview is saved in this browser; download an HTML copy to take it anywhere.</p><button class="pb-btn pb-ghost" type="button" data-action="export">${i('download')}Download portfolio HTML</button></div>`, 'Let people explore your work, with or without a Showlio account.');
 }
 
 document.addEventListener('input', event => {
@@ -441,15 +502,16 @@ window.addEventListener('hashchange', () => { const index = hashes.indexOf(locat
 window.addEventListener('beforeunload', event => { if (state.dirty || pendingImages) { event.preventDefault(); event.returnValue = ''; } });
 
 async function start() {
-  let profile = defaultProfile;
-  try { profile = JSON.parse(localStorage.getItem('showlio-demo-workspace-v1') || '{}').profile || defaultProfile; } catch { /* Keep the current starter identity. */ }
-  try { state.portfolio = await loadDraft(); } catch { status('Storage unavailable', 'is-error'); }
+  const [loaded, draft] = await Promise.all([accountRequest('GET'), loadDraft().catch(() => { status('Storage unavailable', 'is-error'); return null; })]);
+  account = loaded.ok ? loaded.data.profile : null;
+  state.portfolio = draft;
   if (!state.portfolio) {
-    state.portfolio = createPortfolio(profile);
-    state.portfolio.profile.intro = 'I create meaningful digital experiences, one project at a time.';
-    state.portfolio.profile.availability = profile.availability === 'available' ? 'Open to collaborate' : '';
-    changed();
-  } else status('Draft saved');
+    state.portfolio = createPortfolio(account ? { ...account, role: account.headline, slug: slugFor(account.username) } : {});
+    if (account) state.portfolio.profile.availability = availabilityLabel(account.availability);
+    changed({ sync: false });
+  } else if (account && applyAccount()) changed({ sync: false });
+  else status('Draft saved');
+  if (!account) notify(loaded.data.error ?? 'Your Showlio profile couldn’t be loaded, so changes stay in this browser for now.');
   try { state.snapshot = await loadSnapshot(state.portfolio.profile.slug); } catch { /* The draft remains editable when storage is blocked. */ }
   state.step = Math.max(0, hashes.indexOf(location.hash.slice(1)));
   render();

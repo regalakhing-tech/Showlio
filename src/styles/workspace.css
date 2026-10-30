@@ -2,3 +2,8 @@
 @import "./workspace-feed.css";
 @import "./workspace-settings.css";
 @import "./workspace-portfolio.css";
+@import "./workspace-composer.css";
+@import "./workspace-project.css";
+@import "./workspace-library.css";
+@import "./workspace-notifications.css";
+@import "./workspace-creator.css";

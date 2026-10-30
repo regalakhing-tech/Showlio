@@ -36,6 +36,8 @@ jobs:
           coverage: none
       - name: Install locked dependencies
         run: npm ci
+      - name: Install PHP dependencies (PHPMailer)
+        run: composer install --no-interaction --no-progress --prefer-dist
       - name: Check syntax, compile CSS and test HTTP behavior
         run: npm run check
 

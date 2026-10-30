@@ -1,0 +1,13 @@
+{
+    "name": "showlio/showlio",
+    "description": "Showlio PHP API",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "phpmailer/phpmailer": "^7.1"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

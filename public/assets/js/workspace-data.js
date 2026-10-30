@@ -31,6 +31,14 @@ export const people = [
   { id: 'jordan', name: 'Jordan Kim', role: 'Backend Developer', hue: 228 },
 ];
 export const personById = (id) => people.find((person) => person.id === id) ?? people[0];
+// Real creators from the feed go first, so they lead lists like "Discover creators".
+export function addPeople(list) {
+  for (const person of [...list].reverse()) {
+    const index = people.findIndex((existing) => existing.id === person.id);
+    if (index >= 0) people.splice(index, 1);
+    people.unshift(person);
+  }
+}
 
 // `cover` draws a live code or workflow preview instead of a photo.
 export const workspaceProjects = [
@@ -50,23 +58,4 @@ export const workspaceProjects = [
   { id: 'brand', title: 'Orbit Brand System', description: 'A minimal identity with a geometric mark, type system and print collateral.', image: thumb('project-brand-identity'), creator: 'lia', categories: ['Design'], tools: ['Illustrator', 'Figma'], views: 9100, likes: 721, comments: 24, created: 3 },
   { id: 'content', title: 'How I Plan My Content', description: 'A behind-the-scenes look at my creative process and weekly planning workflow.', image: thumb('workspace-content'), creator: 'self', owner: true, categories: ['Video'], tools: ['Premiere Pro', 'Notion'], views: 21600, likes: 1400, comments: 93, duration: '1:12', created: 2 },
   { id: 'habitify', title: 'Habitify Mobile', description: 'A friendly habit tracker concept with playful progress and gentle reminders.', image: thumb('project-habitify'), creator: 'alex', categories: ['Design', 'Development'], tools: ['Figma', 'SwiftUI'], views: 8200, likes: 682, comments: 31, created: 1 },
-];
-export const companies = [
-  { id: 'lume', name: 'Lume Studios', mark: 'Lume', style: 'lume', time: '2h ago', project: 'Product Launch Film', tags: ['Video Editing', 'Motion Design', 'Color Grading'] },
-  { id: 'orbit', name: 'Orbit', mark: '△', style: 'orbit', time: '1d ago', project: 'AI Feature Explainer Series', tags: ['Motion Design', 'After Effects', 'Storytelling'] },
-  { id: 'pixel', name: 'PixelForge', mark: 'P', style: 'pixel', time: '2d ago', project: 'Creator Spotlight Series', tags: ['Storytelling', 'Video Editing'] },
-  { id: 'nova', name: 'Nova Creative', mark: 'N', style: 'nova', time: '3d ago', project: 'Motion Identity', tags: ['Motion Design', 'Branding'] },
-  { id: 'studio', name: 'Studio North', mark: 'S', style: 'studio', time: '4d ago', project: 'Documentary Trailer', tags: ['Video Editing', 'Color Grading'] },
-];
-const followerIds = ['daniel', 'maya', 'kenji', 'noah', 'priya', 'elena', 'alex', 'lia', 'marcus', 'jordan', 'priya', 'noah'];
-export const notificationSeeds = [
-  ...companies.map((company, index) => ({ id: `request-${company.id}`, type: 'request', company: company.id, time: company.time, unread: true, saved: index === 1 })),
-  ...followerIds.map((person, index) => ({ id: `follower-${index}`, type: 'follower', person, time: ['3h ago', '8h ago', '1d ago'][index] ?? `${index}d ago`, unread: true, saved: false })),
-  { id: 'activity-like', type: 'like', person: 'noah', project: 'neon', time: '4h ago', unread: true, saved: true },
-  { id: 'activity-save', type: 'save', person: 'maya', project: 'content', time: '6h ago', unread: true, saved: false },
-  { id: 'activity-views', type: 'views', time: '1d ago', unread: true, saved: false },
-  { id: 'activity-comment', type: 'comment', person: 'kenji', project: 'neon', time: '2d ago', unread: true, saved: false },
-  { id: 'report-resolved', type: 'report', title: 'Your report was resolved', message: 'We reviewed your report on a comment. No policy violation was found.', time: '2d ago', unread: true, saved: true },
-  { id: 'report-update', type: 'report', title: 'Your feedback helps our community', message: 'Thanks for helping make Showlio a welcoming place for creators.', time: '3d ago', unread: true, saved: false },
-  { id: 'report-safety', type: 'report', title: 'Community safety update', message: 'Take a moment to review your notification and profile preferences.', time: '4d ago', unread: true, saved: false },
 ];

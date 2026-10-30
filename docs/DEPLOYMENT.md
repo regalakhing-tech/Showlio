@@ -62,13 +62,16 @@ If PHP packaging fails, inspect the Vercel build logs and the runtime compatibil
 
 ## Application environment
 
-The starter health check requires no external services. When implementing them, configure names from `.env.example` in **Vercel → Project → Settings → Environment Variables** for the appropriate Preview and Production environments:
+The health check requires no external services; sign-in does. Configure names from `.env.example` in **Vercel → Project → Settings → Environment Variables** for the appropriate Preview and Production environments:
 
 - `APP_ENV` and `APP_URL`
 - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`)
+- `SUPABASE_SECRET_KEY` (`sb_secret_…`, Supabase Dashboard → Project Settings → API Keys). Server-only, used for rate limits and creating accounts and email codes; without it every `/api/auth` route answers 503.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` and `MAIL_FROM_NAME` for PHPMailer code emails.
+- `SITE_URL` for the production address used in email templates.
 - `GEMINI_API_KEY` for the future server-side AI feature
 
-Use the caller's access token and RLS for ordinary Supabase CRUD. Add an elevated Supabase key only for a narrowly authorized server-side use case. The workflow does not run SQL or change your Supabase project. Redeploy when environment configuration changes.
+Use the caller's access token and RLS for ordinary Supabase CRUD. The secret key stays on the server for rate limits and Supabase Auth administration. Existing accounts, including unconfirmed signups, must sign in, resend their code or reset their password; repeating signup cannot replace their password. The workflow does not run SQL or change your Supabase project. Redeploy when environment configuration changes.
 
 ## References
 

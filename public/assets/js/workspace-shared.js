@@ -43,3 +43,18 @@ export async function readImage(file) {
     reader.readAsDataURL(file);
   });
 }
+
+// Shrinks a chosen photo (512px for profile photos, 1600px for project covers) to a WebP data URL,
+// so uploads take moments even on a slow connection instead of sending the original multi-megabyte file.
+export async function resizeImage(file, max) {
+  if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Choose a JPG, PNG or WebP image.');
+  if (file.size > 10 * 1024 * 1024) throw new Error('Choose an image smaller than 10 MB.');
+  const bitmap = await createImageBitmap(file).catch(() => { throw new Error('This image could not be opened. Please choose another.'); });
+  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return canvas.toDataURL('image/webp', 0.88); // Browsers without WebP encoding return PNG, which the API also accepts.
+}

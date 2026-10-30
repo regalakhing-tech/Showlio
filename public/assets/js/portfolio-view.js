@@ -1,4 +1,5 @@
-import { normalizePortfolio } from './portfolio-model.js';
+import { normalizePortfolio, portfolioFromCreator } from './portfolio-model.js';
+import { slotHeaders } from './session-slot.js';
 import { loadDraft, loadSnapshot } from './portfolio-store.js';
 import { renderPortfolio, renderWorkDetail } from './portfolio-render.js';
 
@@ -10,9 +11,9 @@ let portfolio;
 let activeType = 'all';
 let lastWorkButton;
 
-function unavailable(storageError = false) {
+function unavailable(storageError = false, message = '') {
   document.title = 'Portfolio unavailable — Showlio';
-  host.innerHTML = `<section class="pf-unavailable"><img src="/assets/images/showlio-logo-sm.webp" alt="Showlio" width="130" height="43"><h1>This portfolio isn’t available here</h1><p>${storageError ? 'This browser couldn’t open its portfolio storage. Allow local browser storage and try again, or return to the builder.' : 'Portfolio previews are saved in the browser where they were created. Open this link in that browser, or create your own portfolio.'}</p><div class="pf-unavailable-actions"><a class="pf-button" href="/portfolio/">Create a portfolio</a><a href="/app/">Back to workspace</a></div></section>`;
+  host.innerHTML = `<section class="pf-unavailable"><img src="/assets/images/showlio-logo-sm.webp" alt="Showlio" width="130" height="43"><h1>This portfolio isn’t available here</h1><p>${message ? message.replace(/[&<>"']/g, character => `&#${character.charCodeAt(0)};`) : storageError ? 'This browser couldn’t open its portfolio storage. Allow local browser storage and try again, or return to the builder.' : 'Portfolio previews are saved in the browser where they were created. Open this link in that browser, or create your own portfolio.'}</p><div class="pf-unavailable-actions"><a class="pf-button" href="/portfolio/">Create a portfolio</a><a href="/app/">Back to workspace</a></div></section>`;
 }
 
 let filterTimer;
@@ -56,7 +57,36 @@ dialog.addEventListener('click', event => {
 });
 dialog.addEventListener('close', () => lastWorkButton?.focus({ preventScroll: true }));
 
+// A creator's live portfolio (?u=username): their Showlio profile and published projects,
+// always current, for anyone with the link.
+async function startCreator(handle) {
+  let response;
+  try { response = await fetch(`/api/portfolio?u=${encodeURIComponent(handle)}`, { headers: slotHeaders() }); } catch { unavailable(false, 'Showlio couldn’t be reached. Check your connection and try again.'); return; }
+  const page = await response.json().catch(() => ({}));
+  if (!response.ok) { unavailable(false, page.error || 'This portfolio couldn’t be opened. Try again in a moment.'); return; }
+  portfolio = portfolioFromCreator(page);
+  document.title = `${portfolio.profile.name || 'Portfolio'}${portfolio.profile.role ? ` — ${portfolio.profile.role}` : ''}`;
+  const header = document.querySelector('[data-pf-community]');
+  header.hidden = false;
+  const action = header.querySelector('a:last-child');
+  action.href = page.profile.own ? '/portfolio/' : '/auth/#sign-up';
+  action.textContent = page.profile.own ? 'Edit your portfolio' : 'Join Showlio';
+  if (page.profile.own && !page.profile.visible) {
+    const note = document.querySelector('[data-pf-notice]');
+    note.hidden = false;
+    note.querySelector('span').textContent = 'Only you can see this page: your profile is private.';
+    const link = note.querySelector('a');
+    link.href = '/app/#settings';
+    link.textContent = 'Make it public';
+  }
+  host.classList.add('pf-community-profile');
+  render();
+  settle();
+}
+
 async function start() {
+  const handle = params.get('u');
+  if (handle !== null) { await startCreator(handle); return; }
   const isDraft = params.get('draft') === '1';
   const slug = params.get('slug');
   if (!isDraft && (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 80)) { unavailable(); return; }

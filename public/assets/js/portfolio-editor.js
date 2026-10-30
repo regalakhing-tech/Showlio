@@ -40,13 +40,14 @@ export function renderProfile(p) {
   const safe = normalizePortfolio(p).profile;
   return `<section class="pb-form-pane" aria-labelledby="pb-profile-title">${heading('Create your portfolio', 'Start with you. Add your work next.', 'pb-profile-title')}<div class="pb-form">
     <div class="pb-identity">${identityUpload(profile, 'logo', safe.logo)}${identityUpload(profile, 'avatar', safe.avatar)}</div>
-    ${field('name', 'Display name', profile.name, { max: 100, placeholder: 'Your name', required: true })}
-    ${field('role', 'Your role', profile.role, { placeholder: 'Product designer & developer', required: true })}
+    <p class="pb-sync-note">${i('check-circle')}<span>Your photo, name, role, location, bio, skills, website and Instagram are your Showlio profile. Changes here update it everywhere.</span></p>
+    ${field('name', 'Display name', profile.name, { max: 60, placeholder: 'Your name', required: true })}
+    ${field('role', 'Your role', profile.role, { max: 100, placeholder: 'Product designer & developer', required: true })}
     ${field('intro', 'Short introduction', profile.intro, { max: 280, placeholder: 'Tell people what you create.', rows: 3, count: true })}
     <div class="pb-field"><label for="pb-profile-slug">Portfolio page name <span class="pb-tip" title="This becomes the end of your portfolio link.">${i('info')}</span></label><div class="pb-input-prefix"><span>/portfolio/view/</span><input id="pb-profile-slug" data-profile="slug" maxlength="80" type="text" value="${esc(profile.slug)}" placeholder="your-name" pattern="[a-z0-9]+(-[a-z0-9]+)*" autocapitalize="none" spellcheck="false" required aria-describedby="pb-slug-hint"></div><small id="pb-slug-hint">Lowercase letters, numbers and hyphens. Your saved preview opens in this browser.</small></div>
-    ${field('location', 'Location (optional)', profile.location, { max: 120, placeholder: 'City, country' })}
+    ${field('location', 'Location (optional)', profile.location, { max: 100, placeholder: 'City, country' })}
     <section class="pb-section"><h2>Contact & links</h2><div class="pb-form">${field('email', 'Email (optional)', profile.email, { type: 'email', max: 254, placeholder: 'hello@example.com' })}${field('website', 'Website (optional)', profile.website, { type: 'url', max: 2048, placeholder: 'https://your-website.com', hint: 'Use HTTPS for website and social links.' })}<div class="pb-grid2">${field('github', 'GitHub (optional)', profile.github, { type: 'url', max: 2048, placeholder: 'https://github.com/you' })}${field('linkedin', 'LinkedIn (optional)', profile.linkedin, { type: 'url', max: 2048, placeholder: 'https://linkedin.com/in/you' })}</div>${field('instagram', 'Instagram (optional)', profile.instagram, { type: 'url', max: 2048, placeholder: 'https://instagram.com/you' })}</div></section>
-    <p class="pb-hint">Images stay in this browser. JPG, PNG or WebP, up to 5 MB each.</p>
+    <p class="pb-hint">Your logo stays in this browser; your photo becomes your Showlio profile photo. JPG, PNG or WebP, up to 5 MB each.</p>
   </div></section>`;
 }
 
@@ -54,8 +55,8 @@ export function renderAbout(p) {
   const profile = p?.profile || {};
   const skills = Array.isArray(profile.skills) ? profile.skills : [];
   return `<section class="pb-form-pane">${heading('A little more about you', 'Share your story and what you do best.')}<div class="pb-form">
-    ${field('bio', 'About you', profile.bio, { max: 2000, rows: 6, placeholder: 'What inspires your work? Tell visitors about your experience and approach.', hint: 'A few thoughtful sentences help people get to know you.', count: true })}
-    <section class="pb-section"><h2>Skills & expertise</h2><div class="pb-field"><label for="pb-skill-input">Add a skill</label><div class="pb-skill-entry"><input id="pb-skill-input" type="text" maxlength="80" placeholder="e.g. Product design" aria-describedby="pb-skills-hint">${button('add-skill', 'Add', 'plus')}</div><small id="pb-skills-hint">Add one skill at a time. Press Enter or choose Add.</small></div><div class="pb-chips" aria-label="Your skills">${skills.length ? skills.map(skill => `<span class="pb-chip">${esc(skill)}<button type="button" data-remove-skill="${esc(skill)}" aria-label="Remove ${esc(skill)}">${i('close')}</button></span>`).join('') : '<span class="pb-chips-empty">Your skills will appear here.</span>'}</div></section>
+    ${field('bio', 'About you', profile.bio, { max: 500, rows: 6, placeholder: 'What inspires your work? Tell visitors about your experience and approach.', hint: 'A few thoughtful sentences help people get to know you.', count: true })}
+    <section class="pb-section"><h2>Skills & expertise</h2><div class="pb-field"><label for="pb-skill-input">Add a skill</label><div class="pb-skill-entry"><input id="pb-skill-input" type="text" maxlength="40" placeholder="e.g. Product design" aria-describedby="pb-skills-hint">${button('add-skill', 'Add', 'plus')}</div><small id="pb-skills-hint">Add one skill at a time. Press Enter or choose Add.</small></div><div class="pb-chips" aria-label="Your skills">${skills.length ? skills.map(skill => `<span class="pb-chip">${esc(skill)}<button type="button" data-remove-skill="${esc(skill)}" aria-label="Remove ${esc(skill)}">${i('close')}</button></span>`).join('') : '<span class="pb-chips-empty">Your skills will appear here.</span>'}</div></section>
     <section class="pb-section"><h2>Let people know you’re available</h2>${field('availability', 'Availability (optional)', profile.availability, { placeholder: 'Open to freelance projects', hint: 'This appears with your contact details.' })}</section>
   </div></section>`;
 }

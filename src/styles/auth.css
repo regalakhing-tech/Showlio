@@ -332,3 +332,9 @@ body.is-leaving .auth-shell { opacity: 0; transform: scale(.99); transition: opa
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .auth-bg i { animation: none; }
 }
+/* One-tap paste on the code screen: copy the code from the email, then tap. */
+.auth-paste { display: inline-flex; align-items: center; justify-content: center; gap: 8px; justify-self: center; margin: 2px auto 0; padding: 9px 16px; border: 1px solid #d7e1f5; border-radius: 999px; background: #f5f8ff; color: var(--blue); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s, border-color .2s, transform .2s; }
+.auth-paste:hover { background: #ebf1ff; border-color: #bccdf2; }
+.auth-paste:active { transform: scale(.97); }
+.auth-paste:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.auth-paste .auth-icon { width: 17px; height: 17px; }

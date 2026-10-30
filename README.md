@@ -84,8 +84,8 @@ Follow the [deployment setup guide](docs/DEPLOYMENT.md). PHP uses the community 
 
 ## Configuration and next work
 
-`.env.example` documents planned variables. The starter reads process environment variables and does **not** automatically load `.env` files. Configure environment values in your shell or Vercel; add a maintained dotenv library if later local development needs file-based loading. Never commit real credentials.
+`.env.example` documents the variables. For local development PHP also reads a `.env` file at the project root; real process variables (Vercel) always win. Never commit real credentials.
 
-New Supabase integrations should use `SUPABASE_PUBLISHABLE_KEY`; `SUPABASE_ANON_KEY` is documented for older projects. Keep Gemini and elevated Supabase keys server-side. No credentials are currently used by the starter, and the SQL files are comment-only.
+Sign-in, sign-up, email codes and password resets go through the PHP API (`/api/auth/*`), which validates input, rate-limits attempts and keeps the Supabase session in HttpOnly cookies. It needs `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and the server-only `SUPABASE_SECRET_KEY`. See [database notes](database/README.md) for the schema and limits.
 
 Build the MVP in the blueprint's order: Supabase Auth → editable profiles and RLS → projects and safe Storage uploads → public discovery → AI writing → optional portfolio URL import. See [database notes](database/README.md) before exposing user data.

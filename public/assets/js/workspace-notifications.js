@@ -1,33 +1,65 @@
+// Notifications: real likes, saves, follows and comments on the creator's work, newest
+// first and grouped by day, with the creator's totals beside them.
 import { icon, esc, avatar, compact } from './workspace-shared.js';
-import { companies, personById } from './workspace-data.js';
+import { timeAgo } from './workspace-project-view.js';
 
-export const companyMark = (company) => `<span class="ws-company-mark ${company.style}">${company.mark}</span>`;
-const viewAll = (group, count) => `<button class="ws-text-button" data-view-group="${group}">View all (${count}) ${icon('chevron')}</button>`;
-export function requestRow(item, state) {
-  const company = companies.find((entry) => entry.id === item.company);
-  const accepted = state.requestStatuses[item.id] === 'accepted';
-  return `<div class="ws-request-row ${item.unread ? 'is-unread' : ''}">${companyMark(company)}<div class="ws-request-copy"><p><strong>${company.name} ${icon('verified')}</strong><small>${company.time}</small></p><p>wants to collaborate with you on “${company.project}”</p><div class="ws-pills">${company.tags.map((tag)=>`<span class="ws-pill">${tag}</span>`).join('')}</div></div><div class="ws-request-actions">${accepted ? '<span class="ws-resolved">Accepted in demo</span>' : `<button class="ws-btn ws-blue" data-review="${item.id}">Review</button><button class="ws-btn ws-outline" data-dismiss="${item.id}">Dismiss</button>`}</div></div>`;
+const TABS = [['all', 'All'], ['unread', 'Unread'], ['saved', 'Saved']];
+const TYPE_ICONS = { like: 'heart', bookmark: 'bookmark', follow: 'users', comment: 'message' };
+
+/** What happened, as safe HTML: "Bo Lim liked <project>". */
+export function describe(item) {
+  const who = `<strong>${esc(item.actor?.name ?? 'Someone')}</strong>`;
+  const what = item.project ? `<strong>${esc(item.project.title)}</strong>` : 'your project';
+  switch (item.type) {
+    case 'follow': return `${who} started following you`;
+    case 'like': return `${who} liked ${what}`;
+    case 'bookmark': return `${who} saved ${what}`;
+    case 'comment': return `${who} commented on ${what}${item.body ? `: <q>${esc(item.body)}</q>` : ''}`;
+    default: return `${item.title ? `<strong>${esc(item.title)}</strong> ` : ''}${esc(item.body)}`;
+  }
 }
-function followerRow(item) {
-  const person=personById(item.person);
-  return `<div class="ws-follower-row"><span class="ws-follower-avatar">${avatar(person)}<b>${icon('user')}</b></span><strong>${person.name}</strong><small>${item.time}</small><span>started following you</span><button class="ws-btn ws-outline" data-person="${person.id}">View profile</button></div>`;
+
+/** "Today", "Yesterday" or a date, for grouping. */
+export function dayLabel(timestamp, now = Date.now()) {
+  const day = (time) => new Date(time).toDateString();
+  if (day(timestamp) === day(now)) return 'Today';
+  if (day(timestamp) === day(now - 86400000)) return 'Yesterday';
+  return new Date(timestamp).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
-function activityRow(item,state) {
-  const person=personById(item.person);
-  const project=state.projects.find((entry)=>entry.id===item.project);
-  if(item.type==='views') return `<div class="ws-content-activity"><span class="ws-activity-symbol green">${icon('eye')}</span><div><strong>3.2K profile views <small>${item.time}</small></strong><p>Your profile got 3,245 views this week <em>(+18% from last week)</em></p></div><span class="ws-mini-bars" aria-hidden="true">${[23,12,20,36,16,29,22,31,40].map(h=>`<i style="height:${h}px"></i>`).join('')}</span><button class="ws-icon-button" data-notification-menu="${item.id}" aria-label="Activity options">${icon('more')}</button></div>`;
-  return `<div class="ws-content-activity"><span class="ws-activity-symbol ${item.type==='like'?'pink':'purple'}">${icon(item.type==='like'?'heart':item.type==='save'?'bookmark':'message')}</span>${avatar(person)}<div><strong>${person.name} <small>${item.time}</small></strong><p>${item.type==='like'?'liked':item.type==='save'?'bookmarked':'commented on'} your project “${esc(project?.title??'Creative work')}”</p></div>${project?`<button class="ws-activity-thumbnail" data-project="${project.id}"><img src="${project.image}" alt="${esc(project.title)}" width="88" height="43" loading="lazy"></button>`:''}<button class="ws-icon-button" data-notification-menu="${item.id}" aria-label="Activity options">${icon('more')}</button></div>`;
+
+export function visibleNotifications(state) {
+  const tab = TABS.some(([id]) => id === state.notificationTab) ? state.notificationTab : 'all';
+  return state.notifications.filter((item) => tab === 'all' || (tab === 'unread' ? item.unread : item.saved));
 }
+
+function noteMarkup(item) {
+  const person = item.actor ?? { name: '?' };
+  return `<li class="ws-note ${item.unread ? 'is-unread' : ''}" data-note="${esc(item.id)}"><button class="ws-note-main" data-note-open="${esc(item.id)}"><span class="ws-note-avatar">${avatar(person)}<span class="ws-note-badge is-${esc(item.type)}">${icon(TYPE_ICONS[item.type] ?? 'bell')}</span></span><span class="ws-note-text"><span>${describe(item)}</span><time datetime="${new Date(item.created).toISOString()}">${esc(timeAgo(item.created))}</time></span></button><span class="ws-note-actions"><button class="${item.saved ? 'is-on' : ''}" data-note-save="${esc(item.id)}" aria-pressed="${item.saved}" aria-label="${item.saved ? 'Unsave' : 'Save'} notification">${icon('bookmark')}</button><button data-note-read="${esc(item.id)}" aria-label="Mark as ${item.unread ? 'read' : 'unread'}">${icon(item.unread ? 'check' : 'mail')}</button><button data-note-delete="${esc(item.id)}" aria-label="Delete notification">${icon('close')}</button></span></li>`;
+}
+
 export function renderNotifications(state) {
-  const active=state.notifications.filter((item)=>state.requestStatuses[item.id]!=='dismissed');
-  const requests=active.filter(item=>item.type==='request');
-  const followers=active.filter(item=>item.type==='follower');
-  const activity=active.filter(item=>['like','save','views','comment'].includes(item.type));
-  const reports=active.filter(item=>item.type==='report');
-  const unread=active.some(item=>item.unread);
-  const tab=state.notificationTab;
-  const saved=active.filter(item=>item.saved);
-  const show=(kind)=>tab==='all'||tab===kind;
-  const overview=state.activityPeriod==='30'?[['eye','12.8K','Profile views','+24%','blue'],['users','2.4K','New followers','+16%','blue'],['heart','1.1K','Likes','+32%','pink'],['bookmark','280','Saves','+45%','purple']]:[['eye','3.2K','Profile views','+18%','blue'],['users','892','New followers','+12%','blue'],['heart','248','Likes','+28%','pink'],['bookmark','73','Saves','+40%','purple']];
-  return `<div class="ws-content-grid"><section class="ws-notification-main"><div class="ws-panel ws-notifications-header"><div class="ws-page-heading"><div><h1>Notifications &amp; activity</h1><p>Stay up to date with your collaborations, audience, and activity on Showlio.</p></div><button class="ws-btn ws-soft" data-action="mark-read" ${unread?'':'disabled'}>${icon('check')} ${unread?'Mark all as read':'All caught up'}</button></div><div class="ws-notification-tabs" aria-label="Notification category">${[['all','grid','All',active.length],['requests','handshake','Requests',requests.length],['activity','zap','Activity',followers.length+activity.length],['saved','bookmark','Saved',saved.length]].map(([id,symbol,label,count])=>`<button data-notification-tab="${id}" class="${tab===id?'active':''}" aria-pressed="${tab===id}">${icon(symbol)} ${label} <span>${count}</span></button>`).join('')}</div></div>${show('requests')?`<section class="ws-panel ws-notification-section"><div class="ws-panel-heading"><h2>Collaboration requests</h2>${viewAll('requests',requests.length)}</div>${requests.length?requests.slice(0,tab==='requests'?10:2).map(item=>requestRow(item,state)).join(''):'<p class="ws-empty-copy">You’re all caught up with your collaboration requests.</p>'}</section>`:''}${show('activity')?`<section class="ws-panel ws-notification-section"><div class="ws-panel-heading"><h2>New followers</h2>${viewAll('followers',followers.length)}</div>${followers.slice(0,3).map(followerRow).join('')}</section><section class="ws-panel ws-notification-section"><div class="ws-panel-heading"><h2>Activity on your content</h2>${viewAll('activity',followers.length+activity.length)}</div>${activity.slice(0,tab==='activity'?4:3).map(item=>activityRow(item,state)).join('')}</section>`:''}${tab==='all'?`<section class="ws-panel ws-notification-section"><div class="ws-panel-heading"><h2>Moderation &amp; reports</h2>${viewAll('reports',reports.length)}</div>${reports.slice(0,1).map(item=>`<div class="ws-content-activity"><span class="ws-activity-symbol gray">${icon('shield')}</span><div><strong>${item.title} <small>${item.time}</small></strong><p>${item.message}</p></div><span class="ws-resolved">Resolved</span><button class="ws-icon-button" data-notification-menu="${item.id}" aria-label="Report options">${icon('more')}</button></div>`).join('')}</section>`:''}${tab==='saved'?`<section class="ws-panel ws-notification-section"><div class="ws-panel-heading"><h2>Saved notifications</h2><span class="ws-muted">${saved.length} saved</span></div>${saved.length?saved.map(item=>item.type==='request'?requestRow(item,state):item.type==='report'?`<div class="ws-content-activity">${icon('shield')}<div><strong>${item.title}</strong><p>${item.message}</p></div><button class="ws-icon-button" data-notification-menu="${item.id}" aria-label="Notification options">${icon('more')}</button></div>`:activityRow(item,state)).join(''):'<p class="ws-empty-copy">Save an activity from its options menu to find it here.</p>'}</section>`:''}</section><aside class="ws-right-rail"><section class="ws-panel ws-overview"><div class="ws-panel-heading"><h2>Activity overview</h2><label><span class="ws-sr">Activity period</span><select id="ws-period"><option value="7" ${state.activityPeriod==='7'?'selected':''}>Last 7 days</option><option value="30" ${state.activityPeriod==='30'?'selected':''}>Last 30 days</option></select></label></div><div class="ws-stat-grid">${overview.map(([symbol,value,label,change,color])=>`<div><span class="ws-activity-symbol ${color}">${icon(symbol)}</span><strong>${value}</strong><p>${label}</p><em>↑ ${change}</em></div>`).join('')}</div></section><section class="ws-panel ws-rail-list"><div class="ws-panel-heading"><h2>Collaboration requests</h2>${viewAll('requests',requests.length)}</div>${requests.slice(0,3).map(item=>{const company=companies.find(c=>c.id===item.company);return `<button data-review="${item.id}">${companyMark(company)}<span><strong>${company.name}</strong><small>${company.time}</small></span>${icon('chevron')}</button>`;}).join('')}</section><section class="ws-panel ws-rail-list"><div class="ws-panel-heading"><h2>Recent followers</h2>${viewAll('followers',followers.length)}</div>${followers.slice(0,3).map(item=>{const person=personById(item.person);return `<button data-person="${person.id}">${avatar(person)}<span><strong>${person.name}</strong><small>${item.time}</small></span>${icon('chevron')}</button>`;}).join('')}</section><section class="ws-panel ws-quick-actions"><h2>Quick actions</h2>${[['settings','Notification preferences','notification-settings'],['bell-off','Muted accounts','muted'],['help','Help & safety','safety']].map(([symbol,label,action])=>`<button data-action="${action}">${icon(symbol)}<span>${label}</span>${icon('chevron')}</button>`).join('')}</section></aside></div>`;
+  const tab = TABS.some(([id]) => id === state.notificationTab) ? state.notificationTab : 'all';
+  const counts = { all: state.notifications.length, unread: state.notifications.filter((item) => item.unread).length, saved: state.notifications.filter((item) => item.saved).length };
+  const items = visibleNotifications(state);
+  const groups = [];
+  for (const item of items) {
+    const label = dayLabel(item.created);
+    if (groups.at(-1)?.label !== label) groups.push({ label, items: [] });
+    groups.at(-1).items.push(item);
+  }
+  const empty = {
+    all: ['Nothing here yet', 'When people like, save, follow or comment on your work, you’ll see it here.'],
+    unread: ['You’re all caught up', 'There are no unread notifications.'],
+    saved: ['No saved notifications', 'Save a notification with its bookmark to keep it here.'],
+  }[tab];
+  const mine = state.projects.filter((project) => project.owner);
+  const total = (key) => mine.reduce((sum, project) => sum + (Number(project[key]) || 0), 0);
+  const stats = [
+    ['eye', 'Project views', total('views')],
+    ['heart', 'Likes', total('likes') + mine.filter((project) => state.likes.includes(project.id)).length],
+    ['bookmark', 'Saves', total('saves')],
+    ['message', 'Comments', total('comments')],
+    ['users', 'Followers', state.followers ?? 0],
+  ];
+  return `<div class="ws-content-grid"><section class="ws-panel ws-inbox"><header class="ws-inbox-head"><div><h1>Notifications</h1><p>Likes, saves, follows and comments on your work.</p></div><button class="ws-btn ws-soft" data-action="mark-read" ${counts.unread ? '' : 'disabled'}>${icon('check')}Mark all as read</button></header><div class="ws-segmented ws-inbox-tabs" role="group" aria-label="Show notifications">${TABS.map(([id, label]) => `<button data-notification-tab="${id}" aria-pressed="${tab === id}">${label}<b>${counts[id]}</b></button>`).join('')}</div>${groups.length ? groups.map((group) => `<section class="ws-inbox-group" aria-label="${esc(group.label)}"><h2>${esc(group.label)}</h2><ol class="ws-inbox-list">${group.items.map(noteMarkup).join('')}</ol></section>`).join('') : `<div class="ws-inbox-empty"><span>${icon('bell')}</span><h2>${empty[0]}</h2><p>${empty[1]}</p></div>`}</section><aside class="ws-right-rail"><section class="ws-panel ws-inbox-stats"><h2>Your work at a glance</h2><p>Totals across your projects.</p><ul>${stats.map(([symbol, label, value]) => `<li><span class="ws-inbox-stat-icon">${icon(symbol)}</span><span>${label}</span><b>${compact(value)}</b></li>`).join('')}</ul><button class="ws-btn ws-outline" data-action="notification-settings">${icon('settings')}Notification settings</button></section></aside></div>`;
 }

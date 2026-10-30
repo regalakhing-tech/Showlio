@@ -263,3 +263,30 @@ test('a blocked database open rejects and closes any late connection', async () 
   assert.equal(closed, true);
   delete globalThis.indexedDB;
 });
+
+test('Showlio-hosted photos are allowed, look-alike hosts are not', () => {
+  const avatar = 'https://weizzblyeudetzjusirn.supabase.co/storage/v1/object/public/avatars/0a1b/photo.webp';
+  const signed = 'https://weizzblyeudetzjusirn.supabase.co/storage/v1/object/sign/project-media/u1/p1/cover.webp?token=eyJhbGciOiJIUzI1NiJ9.e30.sig-_x';
+  assert.equal(model.normalizePortfolio({ profile: { avatar } }).profile.avatar, avatar);
+  assert.equal(model.normalizePortfolio({ works: [{ title: 'A', image: signed }] }).works[0].image, signed);
+  for (const image of ['https://supabase.co.evil.com/storage/v1/object/public/avatars/x.webp', 'http://abc.supabase.co/storage/v1/object/public/avatars/x.webp', 'https://abc.supabase.co/rest/v1/profiles', 'https://abc.supabase.co/storage/v1/object/public/avatars/x.webp?x=<script>']) {
+    assert.equal(model.normalizePortfolio({ profile: { avatar: image } }).profile.avatar, '', image);
+  }
+});
+
+test('a creator page becomes a portfolio: profile, links, availability and published projects with photos', () => {
+  const photo = (name) => `https://abc.supabase.co/storage/v1/object/sign/project-media/u/p/${name}.webp?token=t`;
+  const value = model.portfolioFromCreator({
+    profile: { username: 'khing_jay', name: 'Khing Jay', headline: '', bio: 'I edit films.', location: 'Cebu', availability: 'available', avatar: 'https://abc.supabase.co/storage/v1/object/public/avatars/u/a.webp' },
+    skills: ['Premiere Pro'], links: [{ kind: 'website', url: 'https://khing.example.com' }, { kind: 'youtube', url: 'https://youtube.com/@k' }, { kind: 'website', url: 'https://second.example.com' }],
+    projects: [
+      { id: 'p1', title: 'Reel', description: 'Edit of the year.', categories: ['Video'], tools: ['Premiere Pro'], images: [photo('a'), 'https://evil.example.com/b.png', photo('c')] },
+      { id: 'p2', title: 'Bot', description: '', categories: ['AI Automation'], tools: [], images: [] },
+      { id: 'p3', title: 'Song', description: '', categories: [], tools: [], images: [] },
+    ],
+  });
+  assert.deepEqual([value.profile.name, value.profile.role, value.profile.bio, value.profile.location, value.profile.availability, value.profile.website, value.profile.skills], ['Khing Jay', '@khing_jay', 'I edit films.', 'Cebu', 'Open to collaborate', 'https://khing.example.com', ['Premiere Pro']]);
+  assert.match(value.profile.avatar, /avatars\/u\/a\.webp$/);
+  assert.deepEqual(value.works.map((work) => [work.id, work.type, work.category, work.image, work.images.length]), [['p1', 'video', 'Video', photo('a'), 2], ['p2', 'product', 'AI Automation', '', 0], ['p3', 'other', '', '', 0]]);
+  assert.equal(model.portfolioFromCreator({ profile: { username: 'x', availability: 'unavailable' } }).profile.availability, '');
+});

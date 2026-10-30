@@ -1,0 +1,982 @@
+/* "Add a project" composer, its preview, and the photo gallery shared with the project dialog. */
+
+.ws-dialog.ws-dialog-wide {
+  width: min(1000px, calc(100% - 32px));
+}
+
+.ws-composer,
+.ws-composer-preview {
+  --composer-navy: #0c153c;
+  --composer-muted: #5f6d93;
+  --composer-blue: #0068ff;
+  --composer-line: #dfe5f0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+
+.ws-composer[hidden],
+.ws-composer-preview[hidden] {
+  display: none;
+}
+
+.ws-dialog .ws-composer-intro {
+  margin: -8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--composer-muted);
+}
+
+.ws-composer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+/* Photos column */
+.ws-composer-media {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e7ecf5;
+  border-radius: 18px;
+  background: #fafbff;
+  transition: border-color .2s, background .2s, box-shadow .2s;
+}
+
+.ws-composer-media.is-dragging {
+  border-color: var(--composer-blue);
+  background: #f0f5ff;
+  box-shadow: 0 0 0 4px #0068ff14;
+}
+
+.ws-composer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ws-composer-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--composer-navy);
+}
+
+.ws-composer-head span {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eaf0fb;
+  color: #3e5182;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 28px 18px;
+  border: 2px dashed #c4d3f0;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--composer-muted);
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+
+.ws-dropzone[hidden] {
+  display: none;
+}
+
+.ws-dropzone:hover,
+.ws-dropzone:focus-within,
+.is-dragging .ws-dropzone {
+  border-color: var(--composer-blue);
+  background: #f5f8ff;
+}
+
+.ws-dropzone:focus-within {
+  outline: 2px solid var(--composer-blue);
+  outline-offset: 3px;
+}
+
+.ws-dropzone-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 8px;
+  border-radius: 16px;
+  background: #e8f0ff;
+  color: var(--composer-blue);
+  transition: transform .35s cubic-bezier(.16, 1, .3, 1);
+}
+
+.ws-dropzone-icon .ws-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.is-dragging .ws-dropzone-icon {
+  transform: translateY(-4px) scale(1.08);
+}
+
+.ws-dropzone strong {
+  font-size: 16px;
+  color: var(--composer-navy);
+}
+
+.ws-dropzone b {
+  color: var(--composer-blue);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ws-dropzone small {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #7a86a6;
+}
+
+.ws-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-photo-grid:empty {
+  display: none;
+}
+
+.ws-photo {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #e9eef8;
+  box-shadow: 0 1px 2px #1b2b5414;
+  cursor: grab;
+  transition: opacity .2s, transform .25s cubic-bezier(.16, 1, .3, 1);
+}
+
+/* The cover leads: twice the size of the others. */
+.ws-photo:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.ws-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ws-photo.is-lifted {
+  opacity: .45;
+  transform: scale(.96);
+}
+
+.ws-photo-badge {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #0c153cd9;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.ws-photo-actions {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  display: flex;
+  gap: 5px;
+}
+
+.ws-photo-actions button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: #ffffffeb;
+  color: #34446e;
+  box-shadow: 0 2px 8px #0c153c2e;
+  cursor: pointer;
+  transition: background .15s, color .15s, transform .15s;
+}
+
+.ws-photo-actions button:hover {
+  background: #fff;
+  color: var(--composer-blue);
+  transform: scale(1.06);
+}
+
+.ws-photo-actions button[data-photo-remove]:hover {
+  color: #c62f45;
+}
+
+.ws-photo-actions button:focus-visible {
+  outline: 2px solid var(--composer-blue);
+  outline-offset: 2px;
+}
+
+.ws-photo-actions .ws-icon {
+  width: 15px;
+  height: 15px;
+}
+
+/* On mouse devices the photo buttons appear when the photo is hovered or focused. */
+@media (hover: hover) and (pointer: fine) {
+  .ws-photo-actions {
+    opacity: 0;
+    transition: opacity .2s;
+  }
+
+  .ws-photo:hover .ws-photo-actions,
+  .ws-photo:focus-within .ws-photo-actions {
+    opacity: 1;
+  }
+}
+
+.ws-photo.is-pending {
+  display: grid;
+  place-items: center;
+  cursor: default;
+  background: linear-gradient(110deg, #e9eef8 30%, #f5f7fc 50%, #e9eef8 70%) 0 0 / 200% 100%;
+  animation: ws-photo-shimmer 1.2s linear infinite;
+}
+
+.ws-photo-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #b9c8e6;
+  border-top-color: var(--composer-blue);
+  border-radius: 50%;
+  animation: ws-photo-spin .8s linear infinite;
+}
+
+@keyframes ws-photo-spin {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes ws-photo-shimmer {
+  to { background-position: -200% 0; }
+}
+
+.ws-dialog .ws-composer-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6f7c9e;
+}
+
+.ws-composer-hint[hidden] {
+  display: none;
+}
+
+/* Details column */
+.ws-composer-details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.ws-composer-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ws-composer-field > span,
+.ws-composer-field > legend {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--composer-navy);
+}
+
+.ws-composer-field > legend {
+  margin-bottom: 8px;
+}
+
+.ws-composer-field small {
+  font-size: 12px;
+  font-weight: 500;
+  color: #7a86a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-composer-field input:not([type="radio"]),
+.ws-composer-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 1px solid var(--composer-line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--composer-navy);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  outline: none;
+  caret-color: var(--composer-blue);
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.ws-composer-field textarea {
+  min-height: 132px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.ws-composer-field input::placeholder,
+.ws-composer-field textarea::placeholder {
+  color: #7f8aa6;
+}
+
+.ws-composer-field input:not([type="radio"]):focus,
+.ws-composer-field textarea:focus {
+  border-color: #7cabff;
+  box-shadow: 0 0 0 4px #0068ff14;
+}
+
+.ws-discipline-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ws-discipline-pick {
+  position: relative;
+}
+
+.ws-discipline-pick input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ws-discipline-pick span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 14px 8px 11px;
+  border: 1px solid var(--composer-line);
+  border-radius: 999px;
+  background: #fff;
+  color: #2a3a63;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background .2s, border-color .2s, color .2s;
+}
+
+.ws-discipline-pick .ws-icon {
+  width: 17px;
+  height: 17px;
+  color: var(--disc);
+}
+
+.ws-discipline-pick:hover span {
+  border-color: #c4d3ef;
+  background: #f8faff;
+}
+
+.ws-discipline-pick input:checked + span {
+  border-color: var(--disc);
+  background: var(--disc-tint);
+  color: var(--composer-navy);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--disc);
+}
+
+.ws-discipline-pick input:focus-visible + span {
+  outline: 2px solid var(--disc);
+  outline-offset: 2px;
+}
+
+.ws-dialog .ws-composer-error {
+  margin: 0;
+}
+
+.ws-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid #e8edf6;
+}
+
+.ws-composer-status {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3e5182;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-composer-footer .ws-btn {
+  min-height: 46px;
+  padding-inline: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  gap: 8px;
+}
+
+.ws-composer-footer .ws-btn .ws-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.ws-composer.is-busy .ws-composer-grid {
+  opacity: .6;
+  pointer-events: none;
+}
+
+.ws-composer [disabled] {
+  cursor: progress;
+}
+
+/* Gallery: the preview and real projects with several photos */
+.ws-gallery {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.ws-gallery-stage {
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  max-height: min(56vh, 480px);
+  border-radius: 16px;
+  background: #0f1733;
+}
+
+.ws-gallery-stage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ws-gallery-thumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+
+.ws-gallery-thumbs button {
+  flex-shrink: 0;
+  width: 76px;
+  height: 56px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: #e9eef8;
+  cursor: pointer;
+  opacity: .7;
+  transition: opacity .2s, border-color .2s;
+}
+
+.ws-gallery-thumbs button:hover {
+  opacity: 1;
+}
+
+.ws-gallery-thumbs button[aria-current="true"] {
+  border-color: #0068ff;
+  opacity: 1;
+}
+
+.ws-gallery-thumbs button:focus-visible {
+  outline: 2px solid #0068ff;
+  outline-offset: 2px;
+}
+
+.ws-gallery-thumbs img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ws-preview-body {
+  display: grid;
+  gap: 14px;
+}
+
+.ws-dialog .ws-preview-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: var(--composer-navy);
+}
+
+.ws-dialog .ws-preview-description {
+  margin: 0;
+  max-width: 68ch;
+  font-size: 15px;
+  white-space: pre-line;
+}
+
+@media (max-width: 860px) {
+  .ws-composer-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ws-dialog.ws-dialog-wide {
+    width: calc(100% - 20px);
+  }
+
+  .ws-composer-media {
+    padding: 12px;
+  }
+
+  .ws-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ws-composer-footer {
+    flex-wrap: wrap;
+  }
+
+  .ws-composer-status {
+    flex-basis: 100%;
+  }
+
+  .ws-composer-footer .ws-btn {
+    flex: 1;
+  }
+
+  .ws-gallery-stage {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-photo.is-pending,
+  .ws-photo-spinner {
+    animation: none;
+  }
+
+  .ws-photo,
+  .ws-dropzone-icon,
+  .ws-photo-actions button {
+    transition: none;
+  }
+}
+
+/* Publishing: cover with a sweeping shine, a progress bar, and each photo's upload state. */
+.ws-publish {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 8px 0 6px;
+  text-align: center;
+}
+
+.ws-publish[hidden] {
+  display: none;
+}
+
+.ws-publish-cover {
+  position: relative;
+  width: min(340px, 100%);
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #e9eef8;
+  box-shadow: 0 22px 44px -26px #1d2b5c80;
+}
+
+.ws-publish-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ws-publish-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, #ffffff70 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: ws-publish-shine 1.8s cubic-bezier(.45, 0, .2, 1) infinite;
+}
+
+@keyframes ws-publish-shine {
+  60%, 100% { transform: translateX(100%); }
+}
+
+.ws-dialog .ws-publish-name {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0c153c;
+}
+
+.ws-dialog .ws-publish-step {
+  margin: -6px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3e5182;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-publish-bar {
+  width: min(360px, 100%);
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6ebf6;
+}
+
+.ws-publish-bar span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(95deg, #10b3ff 0%, #2f5bff 50%, #7b2dff 100%);
+  transition: width .6s cubic-bezier(.16, 1, .3, 1);
+}
+
+.ws-publish-photos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-publish-photos li {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #e9eef8;
+}
+
+.ws-publish-photos img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity .3s, filter .3s;
+}
+
+.ws-publish-photos .is-waiting img {
+  opacity: .45;
+  filter: saturate(.4);
+}
+
+.ws-publish-photos .is-uploading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0c153c59;
+}
+
+.ws-publish-photos .is-uploading::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #ffffff66;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ws-photo-spin .8s linear infinite;
+}
+
+.ws-publish-state {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+}
+
+.ws-publish-state:empty {
+  display: none;
+}
+
+.ws-publish-state .ws-icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+
+.is-done .ws-publish-state {
+  background: #12a46b;
+  box-shadow: 0 0 0 2px #fff;
+  animation: ws-publish-pop .45s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+
+.is-failed .ws-publish-state {
+  background: #d23b52;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.is-failed img {
+  opacity: .5;
+}
+
+@keyframes ws-publish-pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+/* Published: the check draws in with a short burst, then the next steps. */
+.ws-publish-done {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  animation: ws-publish-rise .5s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+@keyframes ws-publish-rise {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+.ws-success-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  margin-bottom: 4px;
+}
+
+.ws-success-mark svg {
+  width: 88px;
+  height: 88px;
+  overflow: visible;
+}
+
+.ws-success-disc {
+  fill: #2f5bff;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ws-success-disc .55s cubic-bezier(.34, 1.56, .64, 1) .08s both;
+}
+
+.ws-success-ring {
+  fill: none;
+  stroke: #2f5bff;
+  stroke-width: 2.5;
+  stroke-dasharray: 176;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ws-success-ring .9s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.ws-success-tick {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: ws-success-tick .38s cubic-bezier(.65, 0, .35, 1) .42s forwards;
+}
+
+@keyframes ws-success-disc {
+  from { transform: scale(0); }
+}
+
+@keyframes ws-success-ring {
+  0% { stroke-dashoffset: 176; opacity: 1; transform: scale(1); }
+  55% { stroke-dashoffset: 0; opacity: 1; transform: scale(1); }
+  100% { stroke-dashoffset: 0; opacity: 0; transform: scale(1.35); }
+}
+
+@keyframes ws-success-tick {
+  to { stroke-dashoffset: 0; }
+}
+
+.ws-success-burst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 12px;
+  margin: -6px 0 0 -2px;
+  border-radius: 2px;
+  background: linear-gradient(#10b3ff, #7b2dff);
+  opacity: 0;
+  transform: rotate(var(--r)) translateY(-50px) scaleY(0);
+  animation: ws-success-burst .75s cubic-bezier(.16, 1, .3, 1) .38s;
+}
+
+@keyframes ws-success-burst {
+  0% { opacity: 1; transform: rotate(var(--r)) translateY(-44px) scaleY(0); }
+  50% { opacity: 1; transform: rotate(var(--r)) translateY(-54px) scaleY(1); }
+  100% { opacity: 0; transform: rotate(var(--r)) translateY(-64px) scaleY(.2); }
+}
+
+.ws-dialog .ws-publish-heading {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: #0c153c;
+}
+
+.ws-dialog .ws-publish-message {
+  max-width: 44ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  text-wrap: balance;
+}
+
+.ws-dialog .ws-publish-warning {
+  max-width: 48ch;
+  margin: 2px 0 0;
+  padding: 10px 14px;
+  border: 1px solid #f2d39c;
+  border-radius: 12px;
+  background: #fff8ea;
+  color: #7a4f00;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ws-publish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ws-publish-actions .ws-btn {
+  min-height: 46px;
+  min-width: 150px;
+  font-size: 15px;
+  font-weight: 600;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .ws-publish-actions {
+    width: 100%;
+  }
+
+  .ws-publish-actions .ws-btn {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-publish-shine,
+  .ws-success-burst {
+    display: none;
+  }
+
+  .ws-publish-done,
+  .ws-success-disc,
+  .ws-success-ring,
+  .ws-publish-photos .is-uploading::after,
+  .is-done .ws-publish-state {
+    animation: none;
+  }
+
+  .ws-success-ring {
+    opacity: 0;
+  }
+
+  .ws-success-tick {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .ws-publish-bar span {
+    transition: none;
+  }
+}
+
+/* Shown when the creator's profile is private: posting would otherwise be visible to them alone. */
+.ws-composer-public {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #cfe0ff;
+  border-radius: 14px;
+  background: #f3f7ff;
+  cursor: pointer;
+}
+
+.ws-composer-public input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: #0068ff;
+}
+
+.ws-composer-public span {
+  display: grid;
+  gap: 3px;
+}
+
+.ws-composer-public strong {
+  font-size: 14px;
+  color: #0c153c;
+}
+
+.ws-composer-public small {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #53618a;
+}

@@ -4,6 +4,8 @@ import { escapeHtml, renderPortfolio, renderWorkDetail } from './portfolio-rende
 const cssPath = '/assets/css/portfolio-public.css';
 const fontPath = '/assets/fonts/inter-latin.woff2';
 const localRaster = /^\/assets\/(?:[a-z0-9_~-][a-z0-9._~-]*\/)*[a-z0-9_~-][a-z0-9._~-]*\.(png|jpe?g|gif|webp|avif)$/i;
+// Profile photos and project photos synced from the creator's Showlio account.
+const storagePhoto = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\//i;
 const fontUrl = /url\(\s*(["']?)\/assets\/fonts\/inter-latin\.woff2\1\s*\)/gi;
 
 // This script is constant: portfolio text only enters the JSON data element.
@@ -85,11 +87,14 @@ export async function exportPortfolio(portfolio) {
   const images = new Map();
   const inlineImage = async source => {
     if (!source || source.startsWith('data:')) return source;
-    if (!localRaster.test(source)) throw new Error('Only local raster assets can be included offline.');
+    const local = localRaster.exec(source);
+    if (!local && !storagePhoto.test(source)) throw new Error('Only local or Showlio-hosted raster images can be included offline.');
     if (!images.has(source)) images.set(source, (async () => {
-      const bytes = new Uint8Array(await (await getAsset(source)).arrayBuffer());
-      const extension = localRaster.exec(source)[1].toLowerCase();
-      const result = dataUrl(bytes, `image/${extension === 'jpg' ? 'jpeg' : extension}`);
+      const response = await getAsset(source);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const extension = local?.[1].toLowerCase();
+      const mime = local ? `image/${extension === 'jpg' ? 'jpeg' : extension}` : (response.headers.get('content-type') ?? '').split(';')[0].trim();
+      const result = dataUrl(bytes, mime);
       // Reuse model signature/size checks so malformed images never vanish silently.
       if (normalizePortfolio({ profile: { avatar: result } }).profile.avatar !== result) {
         throw new Error(`Could not include ${source}: invalid raster image or image exceeds 5 MB.`);
@@ -101,7 +106,10 @@ export async function exportPortfolio(portfolio) {
   const css = await inlineStyles();
   value.profile.logo = value.style.showLogo ? await inlineImage(value.profile.logo) : '';
   value.profile.avatar = value.style.showAvatar ? await inlineImage(value.profile.avatar) : '';
-  for (const work of value.works) work.image = await inlineImage(work.image);
+  for (const work of value.works) {
+    work.image = await inlineImage(work.image);
+    work.images = await Promise.all(work.images.map(inlineImage));
+  }
   const works = value.works.map(work => ({ id: work.id, type: work.type, detail: renderWorkDetail(value, work.id) }));
   const json = JSON.stringify(works).replace(/[<>&\u2028\u2029]/g, character => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`);
   // The stylesheet is a trusted local build, but protect the raw-text boundary too.

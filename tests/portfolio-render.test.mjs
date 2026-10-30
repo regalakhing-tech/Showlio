@@ -45,3 +45,13 @@ test('public layouts preserve personal identity, accessible filters, and safe ex
     assert.match(html, /https:\/\/example.com\/work\?a=1&amp;b=2/);
   }
 });
+
+test('work details show the category and every extra photo', () => {
+  const photo = (name) => `https://abc.supabase.co/storage/v1/object/sign/project-media/u/p/${name}.webp?token=t`;
+  const value = { profile: { name: 'Khing' }, works: [{ id: 'reel', title: 'Reel', category: 'Video <b>', type: 'video', image: photo('a'), images: [photo('a'), photo('b'), photo('c')], visible: true }] };
+  const detail = renderer.renderWorkDetail(value, 'reel');
+  assert.match(detail, /Video &lt;b&gt;/);
+  assert.equal((detail.match(/pf-detail-gallery/g) ?? []).length, 1);
+  assert.equal((detail.match(/<img /g) ?? []).length, 3, 'the cover once, then the two other photos');
+  assert.match(renderer.renderPortfolio(value), /<span class="pf-work-type">Video &lt;b&gt;<\/span>/);
+});

@@ -32,7 +32,7 @@ function identity(profile, style, small = false) {
 }
 
 function workCard(work) {
-  return `<article class="pf-work-card"><button class="pf-work-button" type="button" data-pf-work="${escapeHtml(work.id)}" aria-label="View ${escapeHtml(work.title || 'Untitled work')}"><span class="pf-work-media">${work.image ? image(work.image, work.title) : `<span class="pf-work-placeholder" aria-hidden="true"><span>${escapeHtml(initials(work.title))}</span></span>`}</span><span class="pf-work-caption"><span><strong>${escapeHtml(work.title || 'Untitled work')}</strong><span class="pf-work-type">${singular[work.type]}</span></span>${external}</span></button></article>`;
+  return `<article class="pf-work-card"><button class="pf-work-button" type="button" data-pf-work="${escapeHtml(work.id)}" aria-label="View ${escapeHtml(work.title || 'Untitled work')}"><span class="pf-work-media">${work.image ? image(work.image, work.title) : `<span class="pf-work-placeholder" aria-hidden="true"><span>${escapeHtml(initials(work.title))}</span></span>`}</span><span class="pf-work-caption"><span><strong>${escapeHtml(work.title || 'Untitled work')}</strong><span class="pf-work-type">${escapeHtml(work.category || singular[work.type])}</span></span>${external}</span></button></article>`;
 }
 
 /** Safe, self-contained markup shared by the builder and browser-only viewer. */
@@ -62,5 +62,6 @@ export function renderPortfolio(portfolio, { embedded = false, type = 'all' } = 
 export function renderWorkDetail(portfolio, id) {
   const work = visibleWorks(normalizePortfolio(portfolio)).find(item => item.id === id);
   if (!work) return '';
-  return `<div class="pf-detail">${work.image ? image(work.image, work.title, 'pf-detail-image') : ''}<p class="pf-eyebrow">${singular[work.type]}</p><h2 id="pf-detail-title">${escapeHtml(work.title || 'Untitled work')}</h2>${work.role ? `<p class="pf-detail-role">${escapeHtml(work.role)}</p>` : ''}${work.description ? `<p class="pf-detail-description">${escapeHtml(work.description)}</p>` : ''}${chips(work.skills)}${work.url ? link(work.url, `Visit project ${external}`, 'pf-button') : ''}</div>`;
+  const more = work.images.filter(src => src !== work.image);
+  return `<div class="pf-detail">${work.image ? image(work.image, work.title, 'pf-detail-image') : ''}<p class="pf-eyebrow">${escapeHtml(work.category || singular[work.type])}</p><h2 id="pf-detail-title">${escapeHtml(work.title || 'Untitled work')}</h2>${work.role ? `<p class="pf-detail-role">${escapeHtml(work.role)}</p>` : ''}${work.description ? `<p class="pf-detail-description">${escapeHtml(work.description)}</p>` : ''}${chips(work.skills)}${more.length ? `<div class="pf-detail-gallery">${more.map(src => image(src, work.title)).join('')}</div>` : ''}${work.url ? link(work.url, `Visit project ${external}`, 'pf-button') : ''}</div>`;
 }

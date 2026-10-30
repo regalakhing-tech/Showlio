@@ -11,4 +11,8 @@ otp_length = 6
 
 [auth.email.template.confirmation]
 subject = "Your Showlio verification code"
-content_path = "./supabase/templates/confirmation.html"
+content_path = "./src/emails/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Your Showlio password reset code"
+content_path = "./src/emails/recovery.html"

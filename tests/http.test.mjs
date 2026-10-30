@@ -1,51 +1,18 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
-import { createServer } from 'node:net';
-import { setTimeout as delay } from 'node:timers/promises';
 import { after, before, test } from 'node:test';
 import { creators, projects, imagePath, thumbPath } from '../public/assets/js/community.js';
 import { workspaceProjects, people, defaultProfile } from '../public/assets/js/workspace-data.js';
+import { startPhp } from '../scripts/lib/php-server.mjs';
 
-let server;
+let php;
 let origin;
-let output = '';
 
 before(async () => {
-  const reservation = createServer();
-  reservation.listen(0, '127.0.0.1');
-  await once(reservation, 'listening');
-  const { port } = reservation.address();
-  await new Promise((resolve) => reservation.close(resolve));
-  origin = `http://127.0.0.1:${port}`;
-  server = spawn('php', ['-S', `127.0.0.1:${port}`, '-t', 'public', 'scripts/router.php'], {
-    env: { ...process.env, GEMINI_API_KEY: 'test-secret-must-not-be-returned' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  server.stdout.on('data', (chunk) => { output += chunk; });
-  server.stderr.on('data', (chunk) => { output += chunk; });
-  let spawnError;
-  server.on('error', (error) => { spawnError = error; });
-  for (let attempt = 0; attempt < 80; attempt++) {
-    if (spawnError) throw spawnError;
-    if (server.exitCode !== null) throw new Error(`PHP server exited: ${output}`);
-    try {
-      await fetch(origin, { signal: AbortSignal.timeout(1000) });
-      return;
-    } catch {
-      await delay(50);
-    }
-  }
-  throw new Error(`PHP did not start: ${output}`);
+  php = await startPhp({ GEMINI_API_KEY: 'test-secret-must-not-be-returned' });
+  origin = php.origin;
 });
 
-after(async () => {
-  if (server && server.exitCode === null) {
-    const stopped = once(server, 'exit');
-    server.kill();
-    await stopped;
-  }
-});
+after(() => php?.stop());
 
 test('serves the Showlio starter', async () => {
   const response = await fetch(origin);
@@ -136,7 +103,7 @@ test('serves every generated portrait, project thumbnail, brand asset and web fo
 });
 
 test('serves the workspace and account pages, redirecting bare paths', async () => {
-  for (const [path, marker] of [['/app/', /Explore portfolios/], ['/auth/', /Show your work/]]) {
+  for (const [path, marker] of [['/app/', /Explore portfolios/], ['/auth/', /Show your work/], ['/copy/', /Copy code/]]) {
     const response = await fetch(`${origin}${path}`);
     assert.equal(response.status, 200, path);
     assert.match(await response.text(), marker, path);

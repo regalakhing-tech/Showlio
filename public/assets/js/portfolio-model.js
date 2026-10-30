@@ -21,8 +21,12 @@ function safeEmail(value) {
   return value.length <= 254 && /^[^\s@<>:;,?"\\]+@[^\s@<>:;,?"\\.]+(?:\.[^\s@<>:;,?"\\.]+)+$/.test(value);
 }
 
+// Photos stored in Showlio's Supabase Storage: public avatars and signed project photos.
+const storageImage = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/(?:public|sign)\/[a-z0-9-]+\/[\w./%-]+(?:\?token=[\w.-]+)?$/i;
+
 function safeImage(value) {
   if (!value) return false;
+  if (storageImage.test(value)) return true;
   if (/^\/assets\/(?:[a-z0-9_~-][a-z0-9._~-]*\/)*[a-z0-9_~-][a-z0-9._~-]*\.(?:png|jpe?g|gif|webp|avif)$/i.test(value)) return true;
   const match = /^data:image\/(png|jpeg|gif|webp|avif);base64,([a-z0-9+/]+={0,2})$/i.exec(value);
   if (!match || match[2].length % 4 || match[2].length > Math.ceil(5 * 1024 * 1024 / 3) * 4) return false;
@@ -70,6 +74,8 @@ export function normalizePortfolio(value, { draft = false } = {}) {
       id, title: text(item.title), description: text(item.description),
       type: workTypes.has(item.type) ? item.type : 'other',
       image: safeImage(text(item.image)) ? text(item.image) : '',
+      images: strings(item.images).filter(safeImage).slice(0, 10),
+      category: text(item.category).slice(0, 40),
       url: draft ? draftText(item.url) : safeHttps(text(item.url)) ? text(item.url) : '',
       role: text(item.role), skills: strings(item.skills), visible: item.visible !== false,
     };
@@ -87,6 +93,32 @@ export function normalizePortfolio(value, { draft = false } = {}) {
   };
   if (Number.isSafeInteger(input.publishedAt) && input.publishedAt >= 0) result.publishedAt = timestamp(input.publishedAt);
   return result;
+}
+
+const availabilityLabels = { available: 'Open to collaborate', showcasing: 'Showcasing my work' };
+// Showlio project categories, grouped into the portfolio's work types.
+const categoryTypes = { Video: 'video', Design: 'design', 'UI/UX': 'design', Illustration: 'design', 'Digital Art': 'design', Photography: 'design', Development: 'product', 'AI Automation': 'product' };
+
+/** The availability line a portfolio shows for a Showlio availability setting. */
+export const availabilityLabel = value => availabilityLabels[value] ?? '';
+
+/** A creator's Showlio profile and published projects (GET /api/portfolio) as a portfolio. */
+export function portfolioFromCreator(page) {
+  const input = record(page);
+  const source = record(input.profile);
+  const links = {};
+  for (const item of Array.isArray(input.links) ? input.links : []) if (linkFields.includes(item?.kind) && !links[item.kind]) links[item.kind] = text(item.url);
+  return normalizePortfolio({
+    profile: {
+      ...links, name: source.name, role: text(source.headline) || (text(source.username) ? `@${text(source.username)}` : ''),
+      bio: source.bio, location: source.location, availability: availabilityLabel(source.availability), avatar: source.avatar, skills: input.skills,
+    },
+    works: (Array.isArray(input.projects) ? input.projects : []).map(project => {
+      const category = text(record(project).categories?.[0]);
+      const images = strings(project?.images);
+      return { id: project?.id, title: project?.title, description: project?.description, type: categoryTypes[category] ?? 'other', category, image: images[0], images, skills: project?.tools, visible: true };
+    }),
+  });
 }
 
 /** Copy a workspace identity; no workspace reference or project collection is kept. */
