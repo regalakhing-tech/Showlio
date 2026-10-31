@@ -45,6 +45,9 @@ let fake;
 let smtp;
 let php;
 let origin;
+const publishedPortfolios = new Map();
+let failPortfolioSave = false;
+let hiddenPortfolioOwner = null;
 
 function fakeSupabase(request, body) {
   const route = `${request.method} ${request.url}`;
@@ -79,6 +82,23 @@ function fakeSupabase(request, body) {
   }
   const { method, url } = request;
   const creator = [`Bearer ${ACCESS_JWT}`, 'Bearer access-2'].includes(bearer);
+  if (method === 'GET' && url.startsWith('/rest/v1/published_portfolios?')) {
+    const owner = new URL(url, 'https://fake.test').searchParams.get('owner_id')?.slice(3);
+    return [200, publishedPortfolios.has(owner) ? [{ hidden_at: owner === hiddenPortfolioOwner ? '2026-11-01T00:00:00Z' : null }] : []];
+  }
+  if (['POST', 'PATCH'].includes(method) && url.startsWith('/rest/v1/published_portfolios')) return creator ? [method === 'POST' ? 201 : 204] : [401];
+  if (method === 'GET' && url.startsWith('/rest/v1/portfolio_drafts?')) {
+    const owner = new URL(url, 'https://fake.test').searchParams.get('owner_id')?.slice(3);
+    return [200, publishedPortfolios.has(owner) ? [publishedPortfolios.get(owner)] : []];
+  }
+  if (['POST', 'PATCH'].includes(method) && url.startsWith('/rest/v1/portfolio_drafts')) {
+    if (!creator) return [401, { code: 'PGRST301' }];
+    if (failPortfolioSave) return [503, { message: 'Database unavailable' }];
+    publishedPortfolios.set('u1', { ...body, owner_id: 'u1' });
+    return [method === 'POST' ? 201 : 204];
+  }
+  if (method === 'POST' && url.startsWith('/storage/v1/object/portfolio-media/u1/')) return creator ? [200, {}] : [401];
+  if (route === 'POST /storage/v1/object/sign/portfolio-media') return [200, body.paths.map(path => ({ path, signedURL: `/object/sign/portfolio-media/${path}?token=fresh` }))];
   const serverOnly = ['auth_attempt', 'auth_clear', 'auth_refund', 'username_available'].some((name) => route === `POST /rest/v1/rpc/${name}`);
   // Guests may open portfolios: the fake answers as anon without a token, and as the owner with one.
   if (route === 'POST /rest/v1/rpc/creator_portfolio') {
@@ -659,6 +679,66 @@ test('notifications: real items with who did what, marked read or saved, deleted
   assert.equal((await fetch(`${origin}/api/notifications`)).status, 401);
 });
 
+test('portfolio publishing stores every builder field as the caller and guests load the saved images and content', async () => {
+  const image = await profileApi('POST', { image: PNG }, 'portfolio/media');
+  assert.equal(image.status, 200);
+  const { image: uploaded } = await image.json();
+  assert.match(uploaded, /\/sign\/portfolio-media\/u1\/[a-f0-9]+\.png\?token=fresh$/);
+  const snapshot = { version: 1, profile: { name: 'Ana', role: 'Designer', slug: 'ana-page', logo: uploaded, intro: 'My custom introduction', bio: 'My complete about text', email: 'ana@example.com', github: 'https://github.com/ana', brand: 'Ana Studio', avatar: '', skills: ['Figma'] }, style: { layout: 'gallery', accent: '#123456', background: 'tint', showLogo: true, showAvatar: false, logoSize: 96 }, works: [{ id: 'manual', title: 'My work', image: uploaded, type: 'design', url: 'https://work.example.com', visible: true }] };
+  calls.length = 0;
+  const saved = await profileApi('PUT', snapshot, 'portfolio');
+  assert.equal(saved.status, 200);
+  assert.equal((await saved.json()).published, true);
+  const row = publishedPortfolios.get('u1');
+  assert.equal(row.content.published.profile.intro, snapshot.profile.intro);
+  assert.equal(row.content.published.profile.bio, snapshot.profile.bio);
+  assert.equal(row.content.published.profile.email, snapshot.profile.email);
+  assert.equal(row.content.published.profile.github, snapshot.profile.github);
+  assert.equal(row.content.published.style.layout, 'gallery');
+  assert.match(row.content.published.profile.logo, /^portfolio-media:u1\//);
+  assert.equal(row.content.published.works[0].image, row.content.published.profile.logo);
+  assert.equal(row.content.media_paths.length, 1);
+  assert.ok(calls.every(call => call.apikey === PUBLISHABLE && call.authorization === `Bearer ${ACCESS_JWT}`));
+  const publicRow = JSON.parse(JSON.stringify(row).replaceAll('u1/', `${OTHER_CREATOR}/`));
+  publishedPortfolios.set(OTHER_CREATOR, publicRow);
+  const page = await (await fetch(`${origin}/api/portfolio?u=bo_lim`)).json();
+  assert.equal(page.portfolio.profile.intro, snapshot.profile.intro);
+  assert.match(page.portfolio.profile.logo, /\/sign\/portfolio-media\/.+\?token=fresh$/);
+  assert.equal(page.portfolio.works[0].image, page.portfolio.profile.logo);
+  assert.equal(page.portfolio.style.logoSize, 96);
+  const privileged = calls.filter(call => call.apikey === SECRET && call.route.includes('/rest/v1/portfolio_drafts?'));
+  assert.ok(privileged.length > 0);
+  assert.ok(privileged.every(call => call.route.includes(`owner_id=eq.${OTHER_CREATOR}&`) && call.authorization === undefined));
+  publicRow.content.media_paths = ['another-owner/private.png', `${OTHER_CREATOR}/../private.png`];
+  publicRow.content.published.profile.logo = 'portfolio-media:another-owner/private.png';
+  calls.length = 0;
+  const guarded = await (await fetch(`${origin}/api/portfolio?u=bo_lim`)).json();
+  assert.equal(guarded.portfolio.profile.logo, '');
+  assert.equal(calls.filter(call => call.route.includes('/sign/portfolio-media')).length, 0, 'hostile owner JSON never makes the service sign a foreign path');
+  hiddenPortfolioOwner = OTHER_CREATOR;
+  assert.equal((await fetch(`${origin}/api/portfolio?u=bo_lim`)).status, 404, 'portfolio moderation still applies');
+  hiddenPortfolioOwner = null;
+  assert.equal((await profileApi('PATCH', { template: 'bento' }, 'portfolio/template')).status, 200);
+  assert.equal(publishedPortfolios.get('u1').content.published.style.layout, 'bento');
+  publishedPortfolios.clear();
+});
+
+test('portfolio publishing refuses guests, invalid images, foreign private media, and server save failures', async () => {
+  assert.equal((await fetch(`${origin}/api/portfolio`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
+  assert.equal((await profileApi('POST', { image: 'data:image/png;base64,PHN2Zz4=' }, 'portfolio/media')).status, 422);
+  const value = { profile: { name: 'Ana', role: 'Designer', slug: 'ana-page', logo: 'https://evil.example.com/logo.png' }, style: { layout: 'classic' }, works: [{ id: 'x', title: 'Work', visible: true }] };
+  assert.equal((await profileApi('PUT', value, 'portfolio')).status, 422);
+  value.profile.logo = `http://127.0.0.1:${fake.address().port}/storage/v1/object/sign/portfolio-media/${OTHER_CREATOR}/private.webp?token=t`;
+  assert.equal((await profileApi('PUT', value, 'portfolio')).status, 422);
+  value.profile.logo = '';
+  value.works[0].skills = Array.from({ length: 16 }, (_, index) => `Skill ${index}`);
+  assert.equal((await profileApi('PUT', value, 'portfolio')).status, 422, 'invalid skills must never silently disappear');
+  value.works[0].skills = [];
+  failPortfolioSave = true;
+  try { assert.equal((await profileApi('PUT', value, 'portfolio')).status, 502); }
+  finally { failPortfolioSave = false; publishedPortfolios.clear(); }
+});
+
 test('portfolio: anyone can open a public creator page with signed photos; unknown or private ones are missing', async () => {
   calls.length = 0;
   const response = await fetch(`${origin}/api/portfolio?u=Bo_Lim`);
@@ -727,7 +807,8 @@ test('portfolio template: the creator picks Studio, Editorial or Spotlight for t
   calls.length = 0;
   const saved = await profileApi('PATCH', { template: 'showcase' }, 'portfolio/template');
   assert.deepEqual([saved.status, await saved.json()], [200, { template: 'showcase' }]);
-  assert.deepEqual([calls[0].route, calls[0].body, calls[0].authorization], ['POST /rest/v1/rpc/set_my_portfolio_template', { choice: 'showcase' }, `Bearer ${ACCESS_JWT}`]);
+  const save = calls.find(call => call.route === 'POST /rest/v1/rpc/set_my_portfolio_template');
+  assert.deepEqual([save.route, save.body, save.authorization], ['POST /rest/v1/rpc/set_my_portfolio_template', { choice: 'showcase' }, `Bearer ${ACCESS_JWT}`]);
   calls.length = 0;
   assert.equal((await profileApi('PATCH', { template: 'neon' }, 'portfolio/template')).status, 422);
   assert.equal(calls.length, 0, 'unknown templates never reach the database');

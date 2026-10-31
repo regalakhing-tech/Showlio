@@ -291,6 +291,25 @@ test('a creator page becomes a portfolio: profile, links, availability and publi
   assert.equal(model.portfolioFromCreator({ profile: { username: 'x', availability: 'unavailable' } }).profile.availability, '');
 });
 
+test('public portfolios preserve the complete published builder settings and included work', () => {
+  const photo = 'https://abc.supabase.co/storage/v1/object/sign/portfolio-media/u/logo.webp?token=fresh';
+  const published = model.normalizePortfolio({
+    profile: { name: 'Custom name', role: 'Custom role', slug: 'my-page', brand: 'My studio', logo: photo, avatar: photo, intro: 'My custom intro', bio: 'My full about text', email: 'me@example.com', github: 'https://github.com/me', linkedin: 'https://linkedin.com/in/me', website: 'https://me.example.com', instagram: 'https://instagram.com/me', location: 'My location', availability: 'Open for commissions', skills: ['Motion'] },
+    style: { layout: 'showcase', accent: '#123456', background: 'tint', showLogo: true, showAvatar: false, logoSize: 96 },
+    works: [{ id: 'manual', title: 'My manual work', type: 'design', url: 'https://work.example.com', visible: true }, { id: 'showlio-p1', title: 'Old title', type: 'video', visible: false }, { id: 'showlio-deleted', title: 'Removed project', visible: true }],
+  });
+  const page = { profile: { name: 'Account name', template: 'classic' }, portfolio: published, projects: [{ id: 'p1', title: 'Latest project', images: [], tools: [] }, { id: 'new', title: 'Not yet included', images: [] }] };
+  const actual = model.portfolioFromCreator(page);
+  assert.deepEqual(actual.profile, published.profile);
+  assert.deepEqual(actual.style, published.style);
+  assert.deepEqual(actual.works.map(work => [work.id, work.title, work.visible]), [['manual', 'My manual work', true], ['showlio-p1', 'Latest project', false]]);
+  page.portfolio.profile.logo = '';
+  assert.equal(model.portfolioFromCreator(page).profile.logo, '', 'no uploaded logo preserves the initials fallback');
+  assert.equal(typeof model.portfolioDraftFromCreator, 'function');
+  const restored = model.portfolioDraftFromCreator(page);
+  assert.equal(restored.works.find(work => work.id === 'showlio-new').visible, false, 'restoring another browser must not re-enable omitted work');
+});
+
 test('Showlio projects fold into the portfolio: new ones first, linked ones refreshed, hand-made ones kept, samples gone', () => {
   const photo = (name) => `https://abc.supabase.co/storage/v1/object/sign/project-media/u/p/${name}.webp?token=t`;
   const page = (projects) => model.portfolioFromCreator({ profile: { name: 'Khing', headline: 'Editor', template: 'minimal' }, projects }).works;

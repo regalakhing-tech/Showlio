@@ -39,6 +39,12 @@ test('serves the independent portfolio builder and viewer without changing exist
   }
 });
 
+test('the Showlio community bar follows the portfolio as a footer', async () => {
+  const html = await (await fetch(`${origin}/portfolio/view/`)).text();
+  assert.match(html, /<main[^>]*data-pf-view[\s\S]*?<\/main>\s*<footer[^>]*data-pf-community/);
+  assert.doesNotMatch(html, /<header[^>]*data-pf-community/);
+});
+
 test('health proves PHP execution without returning environment secrets', async () => {
   const response = await fetch(`${origin}/api/health?probe=1`);
   assert.equal(response.status, 200);

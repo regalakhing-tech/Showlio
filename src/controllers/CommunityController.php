@@ -161,6 +161,7 @@ function portfolio_show(array $supabase): never
             'template' => in_array($profile['template'] ?? null, PORTFOLIO_TEMPLATES, true) ? $profile['template'] : 'classic',
         ],
         'skills' => $page['skills'],
+        'portfolio' => public_portfolio_snapshot($supabase, (string) $profile['id'], $token, $urls),
         'links' => $page['links'],
         'followers' => (int) $page['followers'],
         'projects' => array_map(static fn (array $project): array => [
@@ -184,6 +185,15 @@ function portfolio_template_save(array $supabase): never
     $template = input_string(read_json_body(), 'template');
     if (!in_array($template, PORTFOLIO_TEMPLATES, true)) {
         invalid_input(['template' => 'Choose one of the portfolio templates.']);
+    }
+    $token = user_token($supabase);
+    $owner = (string) (token_claims($token)['sub'] ?? '');
+    $published = published_portfolio_row($supabase, $owner, $token);
+    if (is_array($published['content']['style'] ?? null)) {
+        $content = $published['content'];
+        $content['style']['layout'] = $template;
+        write_portfolio_snapshot($supabase, $owner, $token, $content, $published['media_paths'], $published);
+        json_response(['template' => $template]);
     }
     [$status, $data] = creator_rpc($supabase, 'set_my_portfolio_template', ['choice' => $template]);
     if ($status !== 200 || !is_array($data)) {

@@ -98,6 +98,7 @@ export function normalizePortfolio(value, { draft = false } = {}) {
     works, updatedAt: timestamp(input.updatedAt),
   };
   if (Number.isSafeInteger(input.publishedAt) && input.publishedAt >= 0) result.publishedAt = timestamp(input.publishedAt);
+  if (layouts.has(input.publishedLayout)) result.publishedLayout = input.publishedLayout;
   return result;
 }
 
@@ -114,7 +115,7 @@ export function portfolioFromCreator(page) {
   const source = record(input.profile);
   const links = {};
   for (const item of Array.isArray(input.links) ? input.links : []) if (linkFields.includes(item?.kind) && !links[item.kind]) links[item.kind] = text(item.url);
-  return normalizePortfolio({
+  const current = normalizePortfolio({
     profile: {
       ...links, name: source.name, role: text(source.headline) || (text(source.username) ? `@${text(source.username)}` : ''),
       bio: source.bio, location: source.location, availability: availabilityLabel(source.availability), avatar: source.avatar, skills: input.skills,
@@ -126,6 +127,26 @@ export function portfolioFromCreator(page) {
       return { id: project?.id, title: project?.title, description: project?.description, type: categoryTypes[category] ?? 'other', category, image: images[0], images, skills: project?.tools, visible: true };
     }),
   });
+  if (!input.portfolio || typeof input.portfolio !== 'object') return current;
+  const published = normalizePortfolio(input.portfolio);
+  // Refresh linked project data, keeping the published order, inclusion, type and link.
+  // Newly posted work joins the builder first; it is public here after the next publish.
+  const fresh = new Map(current.works.map(work => [`${SHOWLIO_WORK}${work.id}`, work]));
+  published.works = published.works.filter(work => !isShowlioWork(work) || fresh.has(work.id)).map(work => {
+    const project = fresh.get(work.id);
+    return project ? { ...work, title: project.title, description: project.description, category: project.category, image: project.image, images: project.images, skills: project.skills } : work;
+  });
+  return published;
+}
+
+/** Restore an editable copy without re-including projects omitted from the saved public page. */
+export function portfolioDraftFromCreator(page) {
+  const published = portfolioFromCreator(page);
+  const included = new Set(published.works.map(work => work.id));
+  const current = portfolioFromCreator({ ...page, portfolio: null });
+  published.works = mergeShowlioWorks(published.works, current.works).map(work => included.has(work.id) ? work : { ...work, visible: false });
+  published.publishedLayout = published.style.layout;
+  return published;
 }
 
 // Works linked to a Showlio project carry this id prefix.
@@ -190,6 +211,7 @@ export function validateStep(portfolio, step) {
       if (!text(work.title)) add(`${field}.title`, 'Give this included work a title.');
       if (text(work.url) && !safeHttps(text(work.url))) add(`${field}.url`, 'Use an HTTPS link without embedded credentials.');
       if (text(work.image) && !safeImage(text(work.image))) add(`${field}.image`, 'Choose a valid raster image up to 5 MB.');
+      if (Array.isArray(work.skills) && (work.skills.length > 15 || work.skills.some(skill => text(skill).length > 40))) add(`${field}.skills`, 'Use up to 15 skills, each at most 40 characters.');
     }
   }
   if (step === 3) {

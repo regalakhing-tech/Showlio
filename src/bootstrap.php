@@ -10,6 +10,7 @@ require_once __DIR__ . '/helpers/env.php';
 require_once __DIR__ . '/helpers/http.php';
 require_once __DIR__ . '/helpers/session.php';
 require_once __DIR__ . '/helpers/validation.php';
+require_once __DIR__ . '/helpers/portfolio.php';
 require_once __DIR__ . '/services/supabase.php';
 require_once __DIR__ . '/services/mailer.php';
 require_once __DIR__ . '/middleware/rate_limit.php';
@@ -17,6 +18,7 @@ require_once __DIR__ . '/controllers/HealthController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/ProfileController.php';
 require_once __DIR__ . '/controllers/CommunityController.php';
+require_once __DIR__ . '/controllers/PortfolioController.php';
 require_once __DIR__ . '/controllers/MessagesController.php';
 
 load_env_file(dirname(__DIR__) . '/.env');

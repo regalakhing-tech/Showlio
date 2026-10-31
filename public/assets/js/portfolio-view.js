@@ -25,6 +25,10 @@ function render() {
 
 // The tab icon becomes the creator's name logo, in their accent colour.
 function setFavicon() {
+  if (portfolio.style.showLogo && portfolio.profile.logo) {
+    document.querySelector('link[rel="icon"]').href = portfolio.profile.logo;
+    return;
+  }
   const letters = monogram(portfolio.profile.name).replace(/[&<>"']/g, '');
   const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="18" fill="${portfolio.style.accent}"/><text x="32" y="42" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700" fill="#fff">${letters}</text></svg>`;
   document.querySelector('link[rel="icon"]').href = `data:image/svg+xml,${encodeURIComponent(icon)}`;

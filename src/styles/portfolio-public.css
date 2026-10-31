@@ -485,11 +485,11 @@
 .pf-viewer-main { min-height: 100vh; }
 .pf-notice { padding: 9px 20px; border-bottom: 1px solid #dce7f6; background: #f0f5fd; color: #45557a; font-size: 13px; line-height: 1.5; text-align: center; }
 .pf-notice a { margin-left: 10px; color: #075ece; text-decoration: underline; }
-.pf-community-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px max(24px, calc((100% - 1180px) / 2)); border-bottom: 1px solid #e3e9f3; background: #fff; }
+.pf-community-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px max(24px, calc((100% - 1180px) / 2)); border-top: 1px solid #e3e9f3; background: #fff; }
 .pf-community-brand img { display: block; width: 110px; height: auto; }
-.pf-community-header > span { color: #5e6b88; font-size: 13px; }
-.pf-community-header > a:last-child { color: #075ece; font-size: 14px; font-weight: 600; }
-.pf-community-header[hidden], .pf-notice[hidden], .pf-owner-bar[hidden] { display: none; }
+.pf-community-footer > span { color: #5e6b88; font-size: 13px; }
+.pf-community-footer > a:last-child { color: #075ece; font-size: 14px; font-weight: 600; }
+.pf-community-footer[hidden], .pf-notice[hidden], .pf-owner-bar[hidden] { display: none; }
 
 /* The owner's template switcher on their own page */
 .pf-owner-bar { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 18px; padding: 10px 20px; border-bottom: 1px solid #e3e9f3; background: #fff; box-shadow: 0 8px 24px -18px #0b103059; }
@@ -543,8 +543,8 @@
 .pf-detail .pf-button { align-self: flex-start; margin-top: 28px; }
 .pf-detail .pf-skills li { background: transparent; }
 @media (max-width: 560px) {
-  .pf-community-header { gap: 12px; padding: 12px 18px; }
-  .pf-community-header > span { display: none; }
+  .pf-community-footer { gap: 12px; padding: 12px 18px; }
+  .pf-community-footer > span { display: none; }
   .pf-owner-bar > strong { width: 100%; text-align: center; }
   .pf-owner-choices button { padding-right: 12px; font-size: 13px; }
   .pf-owner-swatch { width: 22px; height: 22px; }

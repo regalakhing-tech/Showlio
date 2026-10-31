@@ -1,8 +1,9 @@
-import { createPortfolio, normalizePortfolio, validateStep, portfolioProgress, visibleWorks, reorderWorks, createPublishedSnapshot, availabilityLabel, portfolioFromCreator, mergeShowlioWorks } from './portfolio-model.js';
+import { createPortfolio, normalizePortfolio, validateStep, portfolioProgress, visibleWorks, reorderWorks, createPublishedSnapshot, availabilityLabel, portfolioFromCreator, portfolioDraftFromCreator, mergeShowlioWorks } from './portfolio-model.js';
 import { loadDraft, saveDraft, saveSnapshot, loadSnapshot } from './portfolio-store.js';
 import { renderPortfolio, renderWorkDetail, escapeHtml as esc } from './portfolio-render.js';
 import { renderProfile, renderAbout, renderWorks, renderStyle, renderPublish, renderWorkForm } from './portfolio-editor.js';
 import { createQrSvg } from './portfolio-qr.js';
+import { publishPortfolio } from './portfolio-publish.js';
 import { slotHeaders, rememberSlot } from './session-slot.js';
 import { withPreservedFocus } from './workspace-shared.js';
 
@@ -15,7 +16,7 @@ const nextLabels = ['Continue to About', 'Add projects & products', 'Customize p
 const glyphs = { phone: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/>', monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>', download: '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>' };
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const i = name => `<svg class="pb-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${glyphs[name] || `<use href="/assets/workspace-icons.svg#${name}"/>`}</svg>`;
-const state = { portfolio: null, snapshot: null, step: 0, device: 'desktop', mobilePreview: false, query: '', type: 'all', reorder: false, previewType: 'all', dirty: false };
+const state = { portfolio: null, snapshot: null, livePublished: false, step: 0, device: 'desktop', mobilePreview: false, query: '', type: 'all', reorder: false, previewType: 'all', dirty: false };
 let saveTimer, toastTimer, revision = 0, saveQueue = Promise.resolve(), lastDialogFocus, editWork, imageToken = 0, dragId, savingPreview = false;
 const identityVersions = { logo: 0, avatar: 0 };
 let pendingImages = 0;
@@ -166,7 +167,7 @@ async function persist() {
 function previewUrl(snapshot = state.snapshot, community = false) {
   const url = new URL('/portfolio/view/', location.origin);
   // The Showlio profile link is the live page anyone can open.
-  if (community && account) { url.searchParams.set('u', account.username); return url.href; }
+  if (account && (community || (snapshot && state.livePublished))) { url.searchParams.set('u', account.username); return url.href; }
   if (snapshot?.profile.slug) url.searchParams.set('slug', snapshot.profile.slug);
   else url.searchParams.set('draft', '1');
   if (community) url.searchParams.set('community', '1');
@@ -202,14 +203,14 @@ function renderMain() {
   withPreservedFocus(main, () => {
     const p = state.portfolio;
     const body = state.step === 0 ? renderProfile(p) : state.step === 1 ? renderAbout(p) : state.step === 3 ? renderStyle(p) : '';
-    main.innerHTML = `<div class="pb-error" id="pb-step-error" role="alert" hidden></div>${[0, 1, 3].includes(state.step) ? `<button type="button" class="pb-btn pb-soft pb-mobile-preview" data-action="toggle-preview">${i('eye')}${state.mobilePreview ? 'Back to editing' : 'Show live preview'}</button>` : ''}${state.step === 2 ? renderWorks(p, state) : state.step === 4 ? `<div class="pb-publish-layout">${renderPublish(p, { ready: !validateStep(p, 4).length, snapshot: state.snapshot })}${previewPane()}</div>` : `<div class="pb-editor-split">${body}${previewPane()}</div>`}`;
+    main.innerHTML = `<div class="pb-error" id="pb-step-error" role="alert" hidden></div>${[0, 1, 3].includes(state.step) ? `<button type="button" class="pb-btn pb-soft pb-mobile-preview" data-action="toggle-preview">${i('eye')}${state.mobilePreview ? 'Back to editing' : 'Show live preview'}</button>` : ''}${state.step === 2 ? renderWorks(p, state) : state.step === 4 ? `<div class="pb-publish-layout">${renderPublish(p, { ready: !validateStep(p, 4).length, snapshot: state.snapshot, live: Boolean(account), published: state.livePublished })}${previewPane()}</div>` : `<div class="pb-editor-split">${body}${previewPane()}</div>`}`;
   }, main);
   if (search) $('#pb-work-search')?.setSelectionRange(search.start, search.end);
   fitPreviews();
 }
 function renderFooter() {
   const progress = portfolioProgress(state.portfolio);
-  $('#pb-footer').innerHTML = `<button type="button" class="pb-btn pb-outline pb-footer-back" data-action="back">${i('arrow-left')}${state.step ? 'Back' : 'Showlio'}</button><div class="pb-footer-progress"><span>Step ${state.step + 1} of 5</span><span class="pb-progress-bars" aria-hidden="true">${steps.map((_, index) => `<span class="${index === state.step ? 'is-active' : progress[index] && index < state.step ? 'is-complete' : ''}"></span>`).join('')}</span></div><span class="pb-footer-note">${state.step === 2 ? 'Choose which work appears in your portfolio.' : state.step === 4 ? 'Your portfolio preview is saved in this browser.' : 'Your portfolio, your story.'}</span><button type="button" class="pb-btn pb-primary pb-footer-next" data-action="next" ${savingPreview ? 'disabled' : ''}><span>${state.step === 4 && state.snapshot ? 'Update saved portfolio' : nextLabels[state.step]}</span>${i('arrow')}</button>`;
+  $('#pb-footer').innerHTML = `<button type="button" class="pb-btn pb-outline pb-footer-back" data-action="back">${i('arrow-left')}${state.step ? 'Back' : 'Showlio'}</button><div class="pb-footer-progress"><span>Step ${state.step + 1} of 5</span><span class="pb-progress-bars" aria-hidden="true">${steps.map((_, index) => `<span class="${index === state.step ? 'is-active' : progress[index] && index < state.step ? 'is-complete' : ''}"></span>`).join('')}</span></div><span class="pb-footer-note">${state.step === 2 ? 'Choose which work appears in your portfolio.' : state.step === 4 ? account ? 'Publish to update your public portfolio.' : 'Your portfolio preview is saved in this browser.' : 'Your portfolio, your story.'}</span><button type="button" class="pb-btn pb-primary pb-footer-next" data-action="next" ${savingPreview ? 'disabled' : ''}><span>${state.step === 4 && state.snapshot ? account ? 'Update portfolio' : 'Update saved portfolio' : nextLabels[state.step]}</span>${i('arrow')}</button>`;
 }
 function render() {
   document.body.classList.toggle('pb-show-preview', state.mobilePreview);
@@ -267,9 +268,13 @@ async function createPreview() {
   savingPreview = true;
   renderFooter();
   try {
-    if (!(await persist())) return;
+    const locallySaved = await persist();
+    if (!locallySaved && !account) return;
     const snapshot = createPublishedSnapshot(state.portfolio);
-    state.snapshot = await saveSnapshot(snapshot);
+    const published = account ? await publishPortfolio(snapshot, { headers: slotHeaders() }) : snapshot;
+    if (account) { state.livePublished = true; state.portfolio.publishedLayout = snapshot.style.layout; await persist(); }
+    try { state.snapshot = await saveSnapshot(snapshot); }
+    catch (error) { if (!account) throw error; state.snapshot = published; }
     render();
     await celebratePublish();
   } catch (error) { notify(error.message || 'Your portfolio could not be saved. Try again.'); }
@@ -280,11 +285,8 @@ async function createPreview() {
 // page to scan, with its link to copy, open or download. The live page uses the template chosen here.
 const popups = () => import('../vendor/sweetalert2.js').then(({ default: Swal }) => Swal.mixin({ buttonsStyling: false, customClass: { popup: 'pb-swal', confirmButton: 'pb-btn pb-primary', actions: 'pb-swal-actions' } }));
 async function celebratePublish() {
-  if (account) {
-    await fetch('/api/portfolio/template', { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...slotHeaders() }, body: JSON.stringify({ template: state.portfolio.style.layout }) }).catch(() => {});
-  }
   const Swal = await popups();
-  await Swal.fire({ icon: 'success', title: 'Your portfolio is live!', text: 'Here’s how people can find it.', timer: 1700, timerProgressBar: true, showConfirmButton: false });
+  await Swal.fire({ icon: 'success', title: account ? account.visible ? 'Your portfolio is live!' : 'Portfolio saved privately' : 'Portfolio preview saved', text: account ? account.visible ? 'Here’s how people can find it.' : 'Make your Showlio profile public when you’re ready to share.' : 'This preview is saved in this browser.', timer: 1700, timerProgressBar: true, showConfirmButton: false });
   const url = previewUrl(state.snapshot, true);
   const qr = createQrSvg(url, { style: 'dots' });
   await Swal.fire({
@@ -379,8 +381,13 @@ function download(contents, type, filename) {
 }
 function showShare(community = false, { celebrate = false, switching = false } = {}) {
   if (!state.snapshot) { notify('Create your portfolio preview first.'); return; }
+  if (account && !state.livePublished) { notify('Choose Update portfolio to publish your logo, text and style before sharing.'); return; }
   const p = state.snapshot.profile;
   const url = previewUrl(state.snapshot, community);
+  if (account) {
+    openModal('Share your portfolio', `<div class="pb-modal-body"><div class="pb-share-person">${p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : `<span class="pb-step-user-avatar">${esc(p.name.slice(0, 1))}</span>`}<div><strong>${esc(p.name)}</strong><p>${esc(p.role)}</p></div></div><div class="pb-qr">${createQrSvg(url, { style: 'dots' })}</div><p class="pb-qr-caption">Scan to open your public portfolio</p><label class="pb-field" for="pb-share-url">Public portfolio link</label><div class="pb-copy-row pb-copy-inline"><input id="pb-share-url" readonly value="${esc(url)}"><button class="pb-icon-button" data-action="copy-share" type="button" aria-label="Copy link" title="Copy link">${i('copy')}${i('check')}</button></div><div class="pb-share-actions"><button class="pb-btn pb-outline" type="button" data-action="download-qr" data-qr-link="${esc(url)}">${i('download')} Download QR</button><a class="pb-btn pb-primary" href="${esc(url)}" target="_blank" rel="noopener">Open portfolio ${i('external')}</a></div><p class="pb-modal-note">Anyone can open this link while your profile is public. Publish again to make your latest draft changes visible.</p><button class="pb-btn pb-ghost" type="button" data-action="export">${i('download')}Download portfolio HTML</button></div>`, 'Let people explore your work, with or without a Showlio account.');
+    return;
+  }
   const other = previewUrl(state.snapshot, !community);
   openModal('Share your portfolio', `<div class="pb-modal-body">${celebrate ? `<p class="pb-share-success">${i('check-circle')}Your portfolio is ready to share</p>` : ''}<div class="pb-share-tabs${switching ? ' is-switching' : ''}" data-active="${community ? 'community' : 'portfolio'}" aria-label="Choose what to share"><button type="button" data-share-tab="portfolio" class="${community ? '' : 'is-active'}" aria-pressed="${!community}">Portfolio website</button><button type="button" data-share-tab="community" class="${community ? 'is-active' : ''}" aria-pressed="${community}">Showlio profile</button></div><div class="pb-share-person">${p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : `<span class="pb-step-user-avatar">${esc(p.name.slice(0, 1))}</span>`}<div><strong>${esc(p.name)}</strong><p>${esc(p.role)}</p></div></div><div class="pb-qr">${createQrSvg(url, { style: 'dots' })}</div><p class="pb-qr-caption">Scan to open this saved preview</p><label class="pb-field" for="pb-share-url">${community ? 'Showlio profile preview link' : 'Public portfolio link'}</label><div class="pb-copy-row pb-copy-inline"><input id="pb-share-url" readonly value="${esc(url)}"><button class="pb-icon-button" data-action="copy-share" type="button" aria-label="Copy link" title="Copy link">${i('copy')}${i('check')}</button></div><div class="pb-share-actions"><button class="pb-btn pb-outline" type="button" data-action="download-qr" data-qr-link="${esc(url)}">${i('download')} Download QR</button><a class="pb-btn pb-primary" href="${esc(url)}" target="_blank" rel="noopener">Open ${community ? 'profile' : 'portfolio'} ${i('external')}</a></div><hr class="pb-share-divider"><label class="pb-field" for="pb-share-other">${community ? 'Your portfolio website' : 'Your Showlio profile'}</label><div class="pb-copy-row"><input id="pb-share-other" readonly value="${esc(other)}"><button class="pb-btn pb-outline" data-action="copy-other" type="button">${i('copy')}${i('check')}<span>Copy link</span></button></div><p class="pb-modal-note">Your portfolio shows your work. Your Showlio profile connects you to the community. Your Showlio profile link is live and always up to date. The portfolio website preview is saved in this browser; download an HTML copy to take it anywhere.</p><button class="pb-btn pb-ghost" type="button" data-action="export">${i('download')}Download portfolio HTML</button></div>`, 'Let people explore your work, with or without a Showlio account.');
 }
@@ -550,14 +557,34 @@ window.addEventListener('hashchange', () => { const index = hashes.indexOf(locat
 window.addEventListener('beforeunload', event => { if (state.dirty || pendingImages) { event.preventDefault(); event.returnValue = ''; } });
 
 // Published Showlio projects load into the portfolio by themselves and stay current; works added here stay too.
-async function loadShowlioProjects() {
+async function loadShowlioProjects({ restore = false } = {}) {
   if (!account?.username) return false;
   let response;
   try { response = await fetch(`/api/portfolio?u=${encodeURIComponent(account.username)}`, { headers: slotHeaders() }); } catch { return false; }
   if (!response.ok) return false;
-  const before = JSON.stringify(state.portfolio.works);
-  state.portfolio.works = mergeShowlioWorks(state.portfolio.works, portfolioFromCreator(await response.json().catch(() => ({}))).works);
-  return JSON.stringify(state.portfolio.works) !== before;
+  const page = await response.json().catch(() => ({}));
+  const before = JSON.stringify(state.portfolio);
+  if (restore && page.portfolio) {
+    state.portfolio = portfolioDraftFromCreator(page);
+    state.snapshot = normalizePortfolio(page.portfolio);
+  }
+  // Fresh project data is separate from the saved portfolio's manual works and settings.
+  state.portfolio.works = mergeShowlioWorks(state.portfolio.works, portfolioFromCreator({ ...page, portfolio: null }).works);
+  // Refresh expiring links without replacing images the creator has edited locally.
+  if (page.portfolio) {
+    state.livePublished = true;
+    const serverLayout = normalizePortfolio(page.portfolio).style.layout;
+    const baseline = state.portfolio.publishedLayout;
+    if (baseline && state.portfolio.style.layout === baseline) state.portfolio.style.layout = serverLayout;
+    state.portfolio.publishedLayout = serverLayout;
+    const freshImages = new Map();
+    const collect = value => { if (typeof value === 'string' && value.includes('/storage/v1/object/sign/')) freshImages.set(value.split('?')[0], value); };
+    for (const value of [page.portfolio.profile?.logo, page.portfolio.profile?.avatar, ...(page.portfolio.works ?? []).flatMap(work => [work.image, ...(work.images ?? [])])]) collect(value);
+    const refresh = value => freshImages.get(value?.split('?')[0]) ?? value;
+    for (const key of ['logo', 'avatar']) state.portfolio.profile[key] = refresh(state.portfolio.profile[key]);
+    for (const work of state.portfolio.works) { work.image = refresh(work.image); work.images = (work.images ?? []).map(refresh); }
+  }
+  return JSON.stringify(state.portfolio) !== before;
 }
 
 async function start() {
@@ -576,7 +603,7 @@ async function start() {
   render();
   animateEnter('first');
   const count = state.portfolio.works.length;
-  if (await loadShowlioProjects()) {
+  if (await loadShowlioProjects({ restore: !draft })) {
     changed({ sync: false });
     render();
     const added = state.portfolio.works.length - count;
