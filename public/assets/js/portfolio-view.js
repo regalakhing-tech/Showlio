@@ -1,7 +1,7 @@
 import { normalizePortfolio, portfolioFromCreator } from './portfolio-model.js';
 import { slotHeaders } from './session-slot.js';
 import { loadDraft, loadSnapshot } from './portfolio-store.js';
-import { renderPortfolio, renderWorkDetail } from './portfolio-render.js';
+import { renderPortfolio, renderWorkDetail, templates, monogram } from './portfolio-render.js';
 
 const host = document.querySelector('[data-pf-view]');
 const dialog = document.querySelector('[data-pf-dialog]');
@@ -19,6 +19,45 @@ function unavailable(storageError = false, message = '') {
 let filterTimer;
 function render() {
   host.innerHTML = renderPortfolio(portfolio, { type: activeType });
+  dialog.className = `pf-dialog pf-dialog-${portfolio.style.layout}`;
+  setFavicon();
+}
+
+// The tab icon becomes the creator's name logo, in their accent colour.
+function setFavicon() {
+  const letters = monogram(portfolio.profile.name).replace(/[&<>"']/g, '');
+  const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="18" fill="${portfolio.style.accent}"/><text x="32" y="42" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700" fill="#fff">${letters}</text></svg>`;
+  document.querySelector('link[rel="icon"]').href = `data:image/svg+xml,${encodeURIComponent(icon)}`;
+}
+
+// On their own page, the creator picks a template; it is saved to their account at once.
+function ownerBar() {
+  const bar = document.querySelector('[data-pf-owner]');
+  const draw = (message = '') => {
+    bar.innerHTML = `<strong>Your page template</strong><div class="pf-owner-choices" role="radiogroup" aria-label="Page template">${Object.entries(templates).map(([key, item]) => `<button type="button" role="radio" aria-checked="${portfolio.style.layout === key}" data-pf-template="${key}"><i class="pf-owner-swatch is-${key}" aria-hidden="true"></i>${item.name}</button>`).join('')}</div><span class="pf-owner-status" role="status">${message}</span>`;
+  };
+  bar.hidden = false;
+  draw();
+  bar.addEventListener('click', async event => {
+    const choice = event.target.closest('[data-pf-template]')?.dataset.pfTemplate;
+    const before = portfolio.style.layout;
+    if (!choice || choice === before) return;
+    portfolio = normalizePortfolio({ ...portfolio, style: { ...portfolio.style, layout: choice } });
+    host.classList.add('pf-settled');
+    render();
+    draw('Saving…');
+    bar.querySelector(`[data-pf-template="${choice}"]`)?.focus({ preventScroll: true });
+    let saved = false;
+    try {
+      const response = await fetch('/api/portfolio/template', { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...slotHeaders() }, body: JSON.stringify({ template: choice }) });
+      saved = response.ok;
+    } catch { saved = false; }
+    if (!saved) {
+      portfolio = normalizePortfolio({ ...portfolio, style: { ...portfolio.style, layout: before } });
+      render();
+    }
+    draw(saved ? `Saved. Visitors now see ${templates[choice].name}.` : 'Couldn’t save. Check your connection and try again.');
+  });
 }
 // The page entrance plays once; later filter changes only animate the work cards.
 function settle() { setTimeout(() => host.classList.add('pf-settled'), 1600); }
@@ -81,6 +120,7 @@ async function startCreator(handle) {
   }
   host.classList.add('pf-community-profile');
   render();
+  if (page.profile.own) ownerBar();
   settle();
 }
 

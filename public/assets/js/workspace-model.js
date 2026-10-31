@@ -43,7 +43,7 @@ export function createWorkspaceState(saved = {}) {
   const projects = [...customProjects, ...clone(workspaceProjects)];
   const knownIds = new Set(projects.map((project) => project.id));
   const list = (key, allowed) => Array.isArray(saved[key]) ? [...new Set(saved[key].filter((id) => allowed.has(id)))] : [];
-  const preferences = { rememberWorkspace: true, showAvailability: true, communityDiscovery: true, projectNotifications: true, messageNotifications: true, communityNotifications: true, productNotifications: false };
+  const preferences = { rememberWorkspace: true, showAvailability: true, communityDiscovery: true, projectNotifications: true, messageNotifications: true, communityNotifications: true, productNotifications: false, showActiveStatus: true };
   for (const key of Object.keys(preferences)) if (typeof saved.preferences?.[key] === 'boolean') preferences[key] = saved.preferences[key];
   return { profile, draft: clone(profile), projects, customProjects, notifications: [], followers: 0, preferences, following: list('following', new Set(people.map((person) => person.id))), bookmarks: list('bookmarks', knownIds), likes: list('likes', knownIds), page: 'explore', settingsTab: 'profile', notificationTab: 'all', feed: { query: '', category: 'All', sort: 'for-you', savedOnly: false, mineOnly: false, filtersOpen: false } };
 }

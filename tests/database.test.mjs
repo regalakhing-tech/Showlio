@@ -255,7 +255,7 @@ test('workspace profile RPCs read, save and switch settings in one call each, as
 
   const fresh = await call('select my_profile() as result');
   assert.deepEqual(fresh.profile, { username: 'erin', email: 'member@example.com', name: 'Erin Lee', headline: '', bio: '', location: '', avatarPath: null, availability: 'available', visible: true, skills: [], links: { website: '', instagram: '', youtube: '' } }, 'a new account starts public');
-  assert.deepEqual(fresh.preferences, { showAvailability: true, communityDiscovery: true, projectNotifications: true, messageNotifications: true, communityNotifications: true, productNotifications: false });
+  assert.deepEqual(fresh.preferences, { showAvailability: true, communityDiscovery: true, projectNotifications: true, messageNotifications: true, communityNotifications: true, productNotifications: false, profileCompleted: false, showActiveStatus: true });
 
   const draft = { name: 'Erin Lee', headline: 'Illustrator', bio: 'Ink and colour.', location: 'Davao', availability: 'showcasing', visible: true, skills: ['Procreate', 'procreate', 'Inking'], links: { website: 'https://erin.art', instagram: '', youtube: 'https://youtube.com/@erin' }, avatarPath: `${users.erin}/one.webp` };
   const saved = await call('select save_my_profile($1) as result', [draft]);
@@ -273,6 +273,9 @@ test('workspace profile RPCs read, save and switch settings in one call each, as
 
   const switched = await call("select set_my_preferences('{\"communityDiscovery\": false, \"productNotifications\": true}') as result");
   assert.deepEqual([switched.preferences.communityDiscovery, switched.preferences.productNotifications, switched.preferences.showAvailability], [false, true, true]);
+  assert.equal((await call("select set_my_preferences('{\"profileCompleted\": true}') as result")).preferences.profileCompleted, true);
+  assert.equal((await call("select set_my_preferences('{\"profileCompleted\": false, \"productNotifications\": false}') as result")).preferences.profileCompleted, true, 'the 100% celebration is once per account');
+  assert.equal((await rows(user('bob', 'select my_profile() as result')))[0].result.preferences.profileCompleted, false, 'each account has its own flag');
 
   assert.equal((await rows(user('bob', 'select my_profile() as result')))[0].result.profile.username, 'bob', 'each caller only ever gets their own profile');
   await assert.rejects(guest('select my_profile()'), DENIED);
@@ -425,4 +428,109 @@ test('creator_portfolio: guests see a public creator and published work; private
   assert.equal((await call('fay', 'select creator_portfolio($1) as result', ['fay'])).profile.visible, false, 'owners still see their own');
   assert.equal(await asGuest('nobody_here'), null);
   await user('fay', "update profiles set visibility = 'public' where id = $1", [users.fay]);
+});
+
+test('direct messages: members write to public members, and only the two people can read them', async () => {
+  await db.query("update profiles set visibility = 'private', hidden_at = null where id = any($1)", [[users.alice, users.carol, users.mod]]);
+  await db.query("update profiles set visibility = 'public', hidden_at = null where id = $1", [users.bob]);
+  const call = async (name, sql, params) => (await rows(user(name, sql, params)))[0].result;
+
+  const sent = await call('alice', 'select send_message($1, $2) as result', [users.bob, '  Hi Bob!  ']);
+  assert.deepEqual([sent.body, sent.mine], ['Hi Bob!', true]);
+  await assert.rejects(user('alice', 'select send_message($1, $2)', [users.carol, 'Hello']), /isn’t available/, 'a private member can’t be cold-messaged');
+  await assert.rejects(user('alice', 'select send_message($1, $2)', [users.alice, 'Me']), /yourself/);
+  await assert.rejects(user('alice', 'select send_message($1, $2)', [users.bob, '   ']), /1 to 2,000/);
+  await assert.rejects(guest('select send_message($1, $2)', [users.bob, 'Hi']), DENIED);
+
+  const inbox = await call('bob', 'select my_conversations() as result');
+  assert.deepEqual(inbox.map((item) => [item.id, item.username, item.lastMessage, item.lastMine, item.unread]), [[users.alice, 'alice', 'Hi Bob!', false, 1]]);
+  assert.equal((await call('alice', 'select my_conversations() as result'))[0].unread, 0, 'your own messages are never unread');
+
+  const thread = await call('bob', 'select conversation_messages($1) as result', [users.alice]);
+  assert.equal(thread.partner.username, 'alice');
+  assert.deepEqual(thread.messages.map((message) => [message.body, message.mine]), [['Hi Bob!', false]]);
+  assert.equal((await call('bob', 'select my_conversations() as result'))[0].unread, 0, 'opening the conversation marks it read');
+
+  await call('bob', 'select send_message($1, $2) as result', [users.alice, 'Hey Alice']);
+  assert.deepEqual((await call('alice', 'select conversation_messages($1) as result', [users.bob])).messages.map((message) => [message.body, message.mine]),
+    [['Hi Bob!', true], ['Hey Alice', false]], 'replies reach a member who is private, once they are talking');
+  assert.equal((await rows(db.query('select count(*)::int as n from conversations'))).at(0).n, 1, 'one conversation per pair');
+
+  assert.deepEqual(await call('carol', 'select my_conversations() as result'), []);
+  assert.equal((await rows(user('carol', 'select count(*)::int as n from messages')))[0].n, 0, 'outsiders read nothing');
+  assert.equal((await rows(user('carol', 'select count(*)::int as n from conversations')))[0].n, 0);
+  await assert.rejects(user('carol', "insert into messages (conversation_id, sender_id, body) select id, $1, 'x' from conversations", [users.carol]), DENIED);
+  await assert.rejects(user('alice', "update conversations set b_read_at = now()"), DENIED, 'read markers change only through the functions');
+  await assert.rejects(user('carol', 'select conversation_messages($1)', [users.mod]), /isn’t available/);
+  assert.deepEqual((await call('carol', 'select conversation_messages($1) as result', [users.bob])).messages, [], 'a public member opens with an empty conversation');
+
+  assert.deepEqual((await call('carol', "select find_members('BO') as result")).map((member) => member.username), ['bob']);
+  assert.deepEqual(await call('bob', "select find_members('bob') as result"), [], 'never yourself');
+  assert.deepEqual(await call('carol', "select find_members('alic') as result"), [], 'private members are not listed');
+  await assert.rejects(guest("select find_members('')"), DENIED);
+});
+
+test('messenger: active status only between people who both share it, a theme per conversation, and seen receipts', async () => {
+  await db.query("update profiles set visibility = 'public', hidden_at = null where id = any($1)", [[users.alice, users.bob]]);
+  const call = async (name, sql, params) => (await rows(user(name, sql, params)))[0].result;
+
+  await call('bob', 'select my_conversations() as result'); // Bob is around.
+  const inbox = await call('alice', 'select my_conversations() as result');
+  const withBob = inbox.find((item) => item.id === users.bob);
+  assert.ok(withBob.activeAt, 'Alice sees when Bob was active');
+  assert.equal(withBob.theme, 'showlio');
+  assert.equal((await call('alice', 'select conversation_messages($1) as result', [users.bob])).partner.activeAt !== null, true);
+
+  await call('bob', "select set_my_preferences('{\"showActiveStatus\": false}') as result");
+  assert.equal((await call('alice', 'select my_conversations() as result')).find((item) => item.id === users.bob).activeAt, null, 'Bob hid his active status');
+  assert.equal((await call('bob', 'select my_conversations() as result')).find((item) => item.id === users.alice).activeAt, null, 'and so he can’t see others either');
+  await call('bob', "select set_my_preferences('{\"showActiveStatus\": true}') as result");
+  assert.equal((await call('bob', 'select my_profile() as result')).preferences.showActiveStatus, true);
+  await assert.rejects(user('alice', 'select * from member_presence'), DENIED, 'presence is never read directly');
+
+  assert.deepEqual(await call('alice', 'select set_conversation_theme($1, $2) as result', [users.bob, 'sunset']), { theme: 'sunset' });
+  assert.equal((await call('bob', 'select conversation_messages($1) as result', [users.alice])).theme, 'sunset', 'both people see the new theme');
+  await assert.rejects(user('alice', 'select set_conversation_theme($1, $2)', [users.bob, 'neon']), /check constraint/);
+  await assert.rejects(user('carol', 'select set_conversation_theme($1, $2)', [users.bob, 'rose']), /Send a message first/, 'only people in the conversation can change it');
+  await assert.rejects(guest('select set_conversation_theme($1, $2)', [users.bob, 'rose']), DENIED);
+
+  await call('alice', 'select send_message($1, $2) as result', [users.bob, 'Seen?']);
+  const before = await call('alice', 'select conversation_messages($1) as result', [users.bob]);
+  const mine = before.messages.at(-1);
+  assert.ok(Date.parse(before.partnerReadAt) < Date.parse(mine.createdAt), 'not seen yet');
+  await call('bob', 'select conversation_messages($1) as result', [users.alice]);
+  const after = await call('alice', 'select conversation_messages($1) as result', [users.bob]);
+  assert.ok(Date.parse(after.partnerReadAt) >= Date.parse(mine.createdAt), 'seen once Bob opened it');
+});
+
+test('portfolio templates: each creator picks their own, and everyone viewing the page gets it', async () => {
+  await db.query("update profiles set visibility = 'public', hidden_at = null where id = any($1)", [[users.alice, users.bob]]);
+  const call = async (name, sql, params) => (await rows(user(name, sql, params)))[0].result;
+  assert.equal((await call('bob', 'select creator_portfolio($1) as result', ['alice'])).profile.template, 'classic', 'new pages start on Studio');
+  assert.deepEqual(await call('alice', 'select set_my_portfolio_template($1) as result', ['showcase']), { template: 'showcase' });
+  assert.equal((await call('bob', 'select creator_portfolio($1) as result', ['alice'])).profile.template, 'showcase');
+  assert.equal((await rows(guest('select creator_portfolio($1) as result', ['alice'])))[0].result.profile.template, 'showcase', 'guests see it too');
+  assert.equal((await call('alice', 'select creator_portfolio($1) as result', ['bob'])).profile.template, 'classic', 'one creator’s choice never changes another’s');
+  for (const choice of ['bento', 'gallery']) assert.deepEqual(await call('alice', 'select set_my_portfolio_template($1) as result', [choice]), { template: choice });
+  await assert.rejects(user('alice', 'select set_my_portfolio_template($1)', ['neon']), /check constraint/);
+  await assert.rejects(guest('select set_my_portfolio_template($1)', ['minimal']), DENIED);
+});
+
+test('creators edit their own projects: details, discipline, tools, and which photos stay in what order', async () => {
+  const call = async (name, sql, params) => (await rows(user(name, sql, params)))[0].result;
+  const { id } = await call('fay', 'select create_my_project($1) as result', [{ title: 'Old title', summary: 'Old.', categories: ['Design'], tools: ['Figma'] }]);
+  const path = (file) => `${users.fay}/${id}/${file}`;
+  for (const [file, position] of [['a.webp', 0], ['b.webp', 1], ['c.webp', 2]]) {
+    await user('fay', 'insert into project_media (project_id, storage_path, sort_order) values ($1, $2, $3)', [id, path(file), position]);
+  }
+  const result = await call('fay', 'select update_my_project($1, $2, $3) as result', [id, { title: 'New title', summary: 'Now in colour.', categories: ['Video'], tools: ['Premiere Pro'] }, [{ path: path('c.webp'), position: 0 }, { path: path('a.webp'), position: 2 }]]);
+  assert.deepEqual(result.removed, [path('b.webp')], 'the photo left out is removed, for the API to delete its file');
+  const project = (await call('gus', 'select workspace_feed() as result')).projects.find((item) => item.id === id);
+  assert.deepEqual([project.title, project.summary, project.categories, project.tools], ['New title', 'Now in colour.', ['Video'], ['Premiere Pro']]);
+  assert.deepEqual(project.mediaPaths, [path('c.webp'), path('a.webp')], 'the new cover comes first');
+
+  await assert.rejects(user('gus', 'select update_my_project($1, $2, $3)', [id, { title: 'Hijacked' }, []]), /Project not found/, 'nobody else can edit it');
+  await assert.rejects(guest('select update_my_project($1, $2, $3)', [id, { title: 'x' }, []]), DENIED);
+  await assert.rejects(user('fay', 'select update_my_project($1, $2, $3)', [id, { title: '' }, []]), /check constraint|violates/, 'a title is still required');
+  assert.equal((await call('gus', 'select workspace_feed() as result')).projects.find((item) => item.id === id).title, 'New title', 'a failed edit changes nothing');
 });

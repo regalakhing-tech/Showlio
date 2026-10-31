@@ -43,7 +43,8 @@ function signed_in_slots(): array
         }
     }
 
-    return array_keys($ids);
+    // PHP turns an all-digit key such as "33301690" into an integer; ids are always strings.
+    return array_map('strval', array_keys($ids));
 }
 
 function slot_signed_in(string $id): bool

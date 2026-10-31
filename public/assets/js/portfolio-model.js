@@ -1,7 +1,8 @@
-const layouts = new Set(['classic', 'minimal', 'showcase']);
+const layouts = new Set(['classic', 'minimal', 'showcase', 'bento', 'gallery']);
 const workTypes = new Set(['website', 'app', 'product', 'design', 'video', 'other']);
 const linkFields = ['website', 'instagram', 'github', 'linkedin'];
-const profileFields = ['name', 'role', 'intro', 'bio', 'slug', 'location', 'availability'];
+// brand: the name beside the logo, when it differs from the display name on the page.
+const profileFields = ['name', 'brand', 'role', 'intro', 'bio', 'slug', 'location', 'availability'];
 const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 const draftText = value => typeof value === 'string' ? value : '';
 const text = value => typeof value === 'string' ? value.trim() : '';
@@ -42,6 +43,10 @@ function safeImage(value) {
     default: return false;
   }
 }
+
+// The header logo's height in pixels; wide logos keep their shape.
+export const LOGO_SIZES = { min: 24, max: 120, default: 40 };
+const logoSize = value => Number.isInteger(value) && value >= LOGO_SIZES.min && value <= LOGO_SIZES.max ? value : LOGO_SIZES.default;
 
 function accentColor(value) {
   const color = text(value).toLowerCase();
@@ -88,6 +93,7 @@ export function normalizePortfolio(value, { draft = false } = {}) {
       background: appearance.background === 'tint' ? 'tint' : 'white',
       showLogo: typeof appearance.showLogo === 'boolean' ? appearance.showLogo : true,
       showAvatar: typeof appearance.showAvatar === 'boolean' ? appearance.showAvatar : true,
+      logoSize: logoSize(appearance.logoSize),
     },
     works, updatedAt: timestamp(input.updatedAt),
   };
@@ -113,12 +119,39 @@ export function portfolioFromCreator(page) {
       ...links, name: source.name, role: text(source.headline) || (text(source.username) ? `@${text(source.username)}` : ''),
       bio: source.bio, location: source.location, availability: availabilityLabel(source.availability), avatar: source.avatar, skills: input.skills,
     },
+    style: { layout: source.template }, // The template the creator picked for their page.
     works: (Array.isArray(input.projects) ? input.projects : []).map(project => {
       const category = text(record(project).categories?.[0]);
       const images = strings(project?.images);
       return { id: project?.id, title: project?.title, description: project?.description, type: categoryTypes[category] ?? 'other', category, image: images[0], images, skills: project?.tools, visible: true };
     }),
   });
+}
+
+// Works linked to a Showlio project carry this id prefix.
+export const SHOWLIO_WORK = 'showlio-';
+export const isShowlioWork = work => String(work?.id ?? '').startsWith(SHOWLIO_WORK);
+// The sample works the removed "Load starter collection" button used to add, by title and photo.
+const sampleWorks = new Set(['Flow|project-habitify.webp', 'Studio|project-taskflow.webp', 'Clay Collection|portfolio-clay.jpg', 'Orbit|project-brand-identity.webp', 'Trail Notes|workspace-mountains.webp', 'Focus|project-habitify.webp'].map(key => key.replace('|', '|/assets/images/')));
+
+/**
+ * The portfolio's works with the creator's published Showlio projects (portfolioFromCreator works)
+ * folded in: new projects first, linked ones refreshed (title, description, category, photos, tools)
+ * while their place, visibility, type, role and link stay as the creator set them. Projects removed
+ * from Showlio leave; works added by hand stay. Old sample works are dropped.
+ */
+export function mergeShowlioWorks(current, projects) {
+  const fresh = new Map((Array.isArray(projects) ? projects : []).map(work => [`${SHOWLIO_WORK}${work.id}`, work]));
+  const kept = (Array.isArray(current) ? current : [])
+    .filter(work => !sampleWorks.has(`${work.title}|${work.image}`))
+    .filter(work => !isShowlioWork(work) || fresh.has(work.id))
+    .map(work => {
+      const project = fresh.get(work.id);
+      return project ? { ...work, title: project.title, description: project.description, category: project.category, image: project.image, images: project.images, skills: project.skills } : work;
+    });
+  const known = new Set(kept.map(work => work.id));
+  const added = [...fresh].filter(([id]) => !known.has(id)).map(([id, project]) => ({ ...project, id, visible: true }));
+  return [...added, ...kept];
 }
 
 /** Copy a workspace identity; no workspace reference or project collection is kept. */
@@ -164,6 +197,7 @@ export function validateStep(portfolio, step) {
     if (text(style.layout) && !layouts.has(style.layout)) add('style.layout', 'Choose one of the available layouts.');
     if (text(style.accent) && !/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/i.test(text(style.accent))) add('style.accent', 'Choose a valid hex color.');
     if (text(style.background) && !['white', 'tint'].includes(style.background)) add('style.background', 'Choose a white or tinted background.');
+    if (style.logoSize !== undefined && logoSize(style.logoSize) !== style.logoSize) add('style.logoSize', `Choose a logo size from ${LOGO_SIZES.min} to ${LOGO_SIZES.max} pixels.`);
   }
   return errors;
 }

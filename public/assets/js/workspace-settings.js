@@ -33,7 +33,7 @@ function switchRow(label, description, name, checked, isDraft = false) {
 }
 
 function assistantPanel(compact = false) {
-  return `<section class="ws-settings-ai ${compact ? 'ws-settings-ai-rail' : ''}" aria-label="AI Assistant demo"><div class="ws-settings-ai-title">${icon('sparkles')}<h3>AI Assistant</h3><span class="ws-settings-beta">BETA</span></div><p>${compact ? 'A little help to make your profile shine.' : 'Make your profile stand out with a little AI help.'}</p><div class="ws-settings-ai-buttons">${button('Improve my bio', 'suggest-bio', 'sparkles')}${button('Suggest relevant skills', 'suggest-skills', 'plus')}${compact ? button('Rewrite in a more professional tone', 'suggest-professional', 'document') : ''}</div><small>Editable demo suggestions</small></section>`;
+  return `<section class="ws-settings-ai ${compact ? 'ws-settings-ai-rail' : ''}" aria-label="AI Assistant demo"><div class="ws-settings-ai-title">${icon('sparkles')}<h3>AI Assistant</h3></div><p>${compact ? 'A little help to make your profile shine.' : 'Make your profile stand out with a little AI help.'}</p><div class="ws-settings-ai-buttons">${button('Improve my bio', 'suggest-bio', 'sparkles')}${button('Suggest relevant skills', 'suggest-skills', 'plus')}${compact ? button('Rewrite in a more professional tone', 'suggest-professional', 'document') : ''}</div><small>Editable demo suggestions</small></section>`;
 }
 
 function profileRail(state) {
@@ -60,10 +60,10 @@ function otherTab(tab, state) {
   const preferences = state.preferences || {};
   const draft = state.draft;
   if (tab === 'account') {
-    return preferencesPanel('Account overview', 'The account you’re signed in with.', `<div class="ws-settings-account-summary">${photo(state.profile)}<div><h3>${esc(state.profile.name)}</h3><p>${esc(state.profile.email)}</p><span class="ws-settings-local-badge">@${esc(state.profile.username)}</span></div></div><div class="ws-settings-info-block">${icon('lock')}<div><h3>Account access</h3><p>You sign in with your email and password. To change your password, sign out and choose “Forgot password?” on the sign-in page.</p></div></div>${switchRow('Remember workspace preferences', 'Keep your sample projects, saves and likes on this browser.', 'rememberWorkspace', preferences.rememberWorkspace ?? true)}`);
+    return preferencesPanel('Account overview', 'The account you’re signed in with.', `<div class="ws-settings-account-summary">${photo(state.profile)}<div><h3>${esc(state.profile.name)}</h3><p>${esc(state.profile.email)}</p><span class="ws-settings-local-badge">@${esc(state.profile.username)}</span></div></div><form class="ws-settings-password" data-settings-form="password" novalidate><div class="ws-settings-info-block">${icon('lock')}<div><h3>Change password</h3><p>Enter your current password, then choose a new one with at least 8 characters. You stay signed in on this device.</p></div></div><div class="ws-settings-password-fields">${field('Current password', 'current', '', '', 'type="password" autocomplete="current-password" maxlength="72" required')}${field('New password', 'password', '', '', 'type="password" autocomplete="new-password" minlength="8" maxlength="72" required')}${field('Confirm new password', 'confirm', '', '', 'type="password" autocomplete="new-password" minlength="8" maxlength="72" required')}</div><p class="ws-settings-error" data-settings-error role="alert" hidden></p><footer class="ws-settings-form-footer"><button type="submit" class="ws-btn ws-primary">Update password ${icon('lock')}</button></footer></form>${switchRow('Remember workspace preferences', 'Keep your sample projects, saves and likes on this browser.', 'rememberWorkspace', preferences.rememberWorkspace ?? true)}`);
   }
   if (tab === 'privacy') {
-    return preferencesPanel('Privacy preferences', 'Choose who can see your profile.', `${switchRow('Public profile', 'Anyone can view your profile and published work. Off keeps it private to you.', 'visible', draft.visible, true)}${switchRow('Show collaboration availability', 'Show whether you’re open to new projects on your profile.', 'showAvailability', preferences.showAvailability ?? true)}${switchRow('Allow community discovery', 'Let people find you through search and Explore.', 'communityDiscovery', preferences.communityDiscovery ?? true)}<div class="ws-settings-info-block">${icon('shield')}<p>Public profile applies when you press Save changes. The other switches save right away.</p></div><p class="ws-settings-error" data-settings-error role="alert" hidden></p>`, `<div class="ws-settings-form-footer">${button('Save changes', 'save', 'check', 'ws-primary')}</div>`);
+    return preferencesPanel('Privacy preferences', 'Choose who can see your profile.', `${switchRow('Public profile', 'Anyone can view your profile and published work. Off keeps it private to you.', 'visible', draft.visible, true)}${switchRow('Show collaboration availability', 'Show whether you’re open to new projects on your profile.', 'showAvailability', preferences.showAvailability ?? true)}${switchRow('Allow community discovery', 'Let people find you through search and Explore.', 'communityDiscovery', preferences.communityDiscovery ?? true)}${switchRow('Show active status', 'Let people you message see when you’re active. When off, you won’t see theirs either.', 'showActiveStatus', preferences.showActiveStatus ?? true)}<div class="ws-settings-info-block">${icon('shield')}<p>Public profile applies when you press Save changes. The other switches save right away.</p></div><p class="ws-settings-error" data-settings-error role="alert" hidden></p>`, `<div class="ws-settings-form-footer">${button('Save changes', 'save', 'check', 'ws-primary')}</div>`);
   }
   if (tab === 'notifications') {
     return preferencesPanel('Notification preferences', 'Choose which updates you want to hear about.', `${switchRow('Project activity', 'Updates about projects and new feedback.', 'projectNotifications', preferences.projectNotifications ?? true)}${switchRow('Messages & collaborations', 'New conversations and collaboration invitations.', 'messageNotifications', preferences.messageNotifications ?? true)}${switchRow('Community highlights', 'Featured creators, inspiration, and community updates.', 'communityNotifications', preferences.communityNotifications ?? false)}${switchRow('Product updates', 'News about Showlio features.', 'productNotifications', preferences.productNotifications ?? false)}<div class="ws-settings-info-block">${icon('bell')}<p>Saved to your account right away. Showlio doesn’t send notification emails yet; these choices will apply when it does.</p></div>`);
@@ -276,10 +276,23 @@ export function bindSettings(root, state, actions) {
   };
   root.addEventListener('input', capture, options);
   root.addEventListener('change', capture, options);
+  const changePassword = async form => {
+    const values = Object.fromEntries(['current', 'password', 'confirm'].map(name => [name, form.elements[name].value]));
+    const error = !values.current ? 'Enter your current password.' : values.password.length < 8 ? 'Use at least 8 characters for your new password.' : values.confirm !== values.password ? 'Passwords don’t match.' : '';
+    showError(form, error);
+    if (error) return;
+    const submit = form.querySelector('[type="submit"]');
+    submit.disabled = true;
+    const failure = await actions.changePassword(values);
+    submit.disabled = false;
+    if (failure) showError(form, Object.values(failure.errors ?? {})[0] ?? failure.error ?? 'Couldn’t update your password. Try again in a moment.');
+    else form.reset();
+  };
   root.addEventListener('submit', event => {
     if (!event.target.matches('[data-settings-form]')) return;
     event.preventDefault();
-    save();
+    if (event.target.dataset.settingsForm === 'password') changePassword(event.target);
+    else save();
   }, options);
   root.addEventListener('keydown', event => {
     const current = event.target.closest('[data-settings-tab]');

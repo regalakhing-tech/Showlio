@@ -9,6 +9,7 @@ import { slotHeaders, rememberSlot, forgetSlot, currentSlot, answerSessionChecks
 import { projectViewMarkup, actionsMarkup, commentsMarkup } from './workspace-project-view.js';
 import { renderPortfolio, renderSaved } from './workspace-library.js';
 import { creatorMarkup } from './workspace-creator.js';
+import { createMessagesState, renderMessages, updateMessages, scrollToLatest, peopleMarkup, mergeThread, threadDiffers, LIKE } from './workspace-messages.js';
 
 const stop = () => new Promise(() => {}); // Never settles: halts this module while the browser leaves or shows an error.
 // Talks to the PHP API with the HttpOnly session cookie. A lost session goes back to sign-in.
@@ -38,6 +39,7 @@ try { saved = JSON.parse(localStorage.getItem(storageKey) ?? '{}'); } catch { sa
 const state = createWorkspaceState(saved);
 state.projects = [];
 state.customProjects = [];
+state.messages = createMessagesState();
 function applyAccount({ profile, preferences }) {
   state.profile = profile;
   state.draft = structuredClone(profile);
@@ -65,6 +67,154 @@ function notify(message) {
   toast.classList.add('visible');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('visible'), 3200);
+}
+// SweetAlert2 loads on the first save only; .ws-swal in workspace-shell.css gives it the Showlio look.
+const alerts = () => import('../vendor/sweetalert2.js').then(({ default: Swal }) => Swal.mixin({ buttonsStyling: false, confirmButtonText: 'Done', customClass: { popup: 'ws-swal', confirmButton: 'ws-btn ws-primary' } }));
+// Confirmations use Showlio's own dialog, never the browser's. Over an open dialog they sit on
+// top of it, and Escape answers "Cancel" without closing the dialog underneath.
+async function confirmAction({ title, text, confirmText = 'Delete', glyph = 'trash' }) {
+  const Swal = await alerts();
+  const hold = (event) => event.preventDefault();
+  dialog.addEventListener('cancel', hold);
+  try {
+    const { isConfirmed } = await Swal.fire({
+      target: dialog.open ? dialog : document.body,
+      title, text, icon: 'warning', iconHtml: icon(glyph),
+      showCancelButton: true, confirmButtonText: confirmText, cancelButtonText: 'Cancel', reverseButtons: true, focusCancel: true,
+      customClass: { popup: 'ws-swal ws-swal-confirm', icon: 'ws-swal-danger', confirmButton: 'ws-btn ws-danger-solid', cancelButton: 'ws-btn ws-outline', actions: 'ws-swal-actions' },
+    });
+    return isConfirmed;
+  } finally {
+    dialog.removeEventListener('cancel', hold);
+  }
+}
+// 100% profile: confetti and a popup once per account, then the meter is gone for good, even if
+// something is removed later. profileCompleted stays undefined until the database migration runs.
+let completionStep = ''; // '' → 'celebrating' → 'done'
+const completionPercent = () => profileCompletion(state.profile, state.projects.some(project => project.owner));
+const completionHidden = () => completionStep ? completionStep === 'done' : state.preferences.profileCompleted === true;
+async function celebrateCompletion() {
+  if (completionStep || state.preferences.profileCompleted !== false || completionPercent() < 100) return;
+  completionStep = 'celebrating';
+  const { ok } = await api('profile/preferences', 'PATCH', { profileCompleted: true });
+  if (!ok) { completionStep = ''; return; } // Not saved to the account, so try again on a later render.
+  const [Swal, { default: confetti }] = await Promise.all([alerts(), import('../vendor/confetti.js')]);
+  const burst = (options) => confetti({ particleCount: 110, spread: 75, startVelocity: 55, colors: ['#00a4ff', '#0b56ff', '#7909ff', '#ffc83d', '#ff5fa2'], zIndex: 2000, disableForReducedMotion: true, ...options });
+  await Swal.fire({ icon: 'success', title: 'Your profile is 100% complete!', text: 'Nice work. Everything people need to discover you is in place.', confirmButtonText: 'Let’s go', didOpen: () => { burst({ angle: 60, origin: { x: 0, y: 0.75 } }); burst({ angle: 120, origin: { x: 1, y: 0.75 } }); setTimeout(() => burst({ particleCount: 140, spread: 120, startVelocity: 40, origin: { y: 0.45 } }), 250); } });
+  const meter = $('.ws-completion');
+  meter?.classList.add('is-leaving');
+  await Promise.allSettled(meter?.getAnimations().map(animation => animation.finished) ?? []);
+  completionStep = 'done';
+  render();
+}
+// Messages: the list refreshes every 15 seconds, and every 3 while Messages is open, so
+// conversations update without reloading. Polls pause while the tab is hidden.
+const chat = state.messages;
+let pollTimer;
+let polling = false;
+async function pollMessages() {
+  clearTimeout(pollTimer);
+  if (polling) return; // The running poll schedules the next one.
+  if (!document.hidden) {
+    polling = true;
+    const open = state.page === 'messages' ? chat.with : '';
+    const [list, thread] = await Promise.all([api('messages'), open ? api(`messages/thread?with=${encodeURIComponent(open)}`) : null]);
+    polling = false;
+    applyInbox(list, thread, open);
+  }
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(pollMessages, state.page === 'messages' ? 3000 : 15000);
+}
+function applyInbox(list, thread, open) {
+  const unreadBefore = chat.unread;
+  if (list?.ok) Object.assign(chat, { conversations: list.data.conversations, unread: list.data.unread, loaded: true, listError: '' });
+  else if (list && !chat.loaded) Object.assign(chat, { loaded: true, listError: errorOf(list.data) });
+  const first = Boolean(thread) && open === chat.with && !chat.threadLoaded;
+  let threadChanged = false;
+  // Skipped while a message is sending, so it never shows twice.
+  if (thread && open === chat.with && !chat.sending) {
+    if (thread.ok) {
+      const next = mergeThread(thread.data.messages, chat.thread);
+      threadChanged = !chat.threadLoaded || threadDiffers(next, chat.thread) || thread.data.partnerReadAt !== chat.partnerReadAt;
+      Object.assign(chat, { partner: thread.data.partner, thread: next, threadLoaded: true, partnerReadAt: thread.data.partnerReadAt });
+      if (!chat.themeSaving) chat.theme = thread.data.theme; // The other person may have changed it.
+      // The header's Profile button opens them like any creator.
+      if (!people.some(item => item.id === chat.partner.id)) addPeople([{ id: chat.partner.id, name: chat.partner.name, username: chat.partner.username, role: chat.partner.headline || `@${chat.partner.username}`, bio: '', avatar: chat.partner.avatar, followers: 0, hue: 220, real: true }]);
+      // Opening a conversation reads it, so its badge clears now rather than on the next poll.
+      const seen = chat.conversations.find(item => item.id === open);
+      if (seen) { chat.unread = Math.max(0, chat.unread - seen.unread); seen.unread = 0; }
+    } else if (!chat.threadLoaded) Object.assign(chat, { threadLoaded: true, error: errorOf(thread.data) });
+  }
+  if (chat.unread !== unreadBefore) withPreservedFocus(document, () => { renderHeader(); renderSidebar(); }, view);
+  if (state.page !== 'messages') return;
+  if (first) { renderView(); scrollToLatest(view); } else updateMessages(view, state, { threadChanged });
+}
+async function loadThread() {
+  const open = chat.with;
+  applyInbox(null, await api(`messages/thread?with=${encodeURIComponent(open)}`), open);
+}
+function openConversation(id) {
+  if (dialog.open) closeModal();
+  const known = chat.conversations.find(item => item.id === id);
+  if (chat.with !== id) Object.assign(chat, { with: id, partner: null, thread: [], threadLoaded: false, error: '', draft: '', partnerReadAt: null, theme: known?.theme ?? 'showlio' });
+  if (state.page === 'messages') { renderView(); scrollToLatest(view); } else navigate('messages');
+  view.querySelector('#ws-msg-input')?.focus({ preventScroll: true });
+  loadThread();
+}
+async function sendMessage(form, like = false) {
+  const field = form.elements.message;
+  const body = like ? LIKE : field.value.trim();
+  if (!body || !chat.partner || chat.sending) return;
+  const to = chat.with;
+  const pending = { id: `pending-${Date.now()}`, body, mine: true, pending: true, created: Date.now() };
+  Object.assign(chat, { thread: [...chat.thread, pending], draft: '', error: '', sending: true });
+  if (!like) { field.value = ''; field.style.height = ''; form.classList.remove('has-text'); }
+  view.querySelector('[data-message-error]').textContent = '';
+  updateMessages(view, state, { threadChanged: true });
+  scrollToLatest(view);
+  const { ok, data } = await api('messages', 'POST', { to, body });
+  chat.sending = false;
+  if (to !== chat.with) return; // They opened another conversation; this one reloads when reopened.
+  const settled = chat.thread.filter(message => message !== pending && (!ok || message.id !== data.message.id));
+  chat.thread = ok ? [...settled, data.message].sort((a, b) => a.created - b.created) : settled;
+  if (!ok) {
+    chat.error = errorOf(data);
+    const input = view.querySelector('#ws-msg-input');
+    if (input && !input.value && !like) { input.value = body; chat.draft = body; input.form.classList.add('has-text'); }
+    const hint = view.querySelector('[data-message-error]');
+    if (hint) hint.textContent = chat.error;
+  }
+  updateMessages(view, state, { threadChanged: true });
+  if (ok) pollMessages();
+}
+async function setChatTheme(name) {
+  const before = chat.theme;
+  if (name === before || !chat.partner) return;
+  const item = chat.conversations.find(entry => entry.id === chat.with);
+  const apply = (theme) => { chat.theme = theme; if (item) item.theme = theme; updateMessages(view, state); };
+  apply(name);
+  chat.themeSaving = true;
+  const { ok, data } = await api('messages/theme', 'PATCH', { with: chat.with, theme: name });
+  chat.themeSaving = false;
+  if (!ok) { apply(before); notify(errorOf(data)); }
+}
+function openNewMessage() {
+  const content = openModal('New message', `<form class="ws-msg-search" data-people-form role="search"><label class="ws-sr" for="ws-people-input">Search members</label>${icon('search')}<input id="ws-people-input" type="search" autocomplete="off" maxlength="40" placeholder="Search by name or @username"></form><ul class="ws-msg-people" data-people-results>${peopleMarkup(undefined)}</ul>`);
+  const input = content.querySelector('#ws-people-input');
+  const results = content.querySelector('[data-people-results]');
+  let token = 0;
+  let timer;
+  const search = async () => {
+    const mine = ++token;
+    results.innerHTML = peopleMarkup(undefined);
+    const { ok, data } = await api(`messages/people?q=${encodeURIComponent(input.value.trim().replace(/^@/, ''))}`);
+    if (mine !== token) return;
+    results.innerHTML = ok ? peopleMarkup(data.people) : `<li class="ws-msg-empty">${esc(errorOf(data))}</li>`;
+  };
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(search, 250); });
+  content.querySelector('[data-people-form]').addEventListener('submit', event => { event.preventDefault(); clearTimeout(timer); search(); });
+  search();
+  input.focus();
 }
 function persist() {
   try {
@@ -175,7 +325,7 @@ function showProject(id, focusComments = false) {
 }
 async function deleteComment(commentId) {
   const project = state.projects.find(item => comments.get(item.id)?.some(comment => comment.id === commentId));
-  if (!project || !confirm('Delete this comment?')) return;
+  if (!project || !(await confirmAction({ title: 'Delete this comment?', text: 'It disappears from the conversation for everyone.' }))) return;
   const { ok, data } = await api(`projects/comments?id=${encodeURIComponent(commentId)}`, 'DELETE');
   if (!ok) { notify(errorOf(data)); return; }
   comments.set(project.id, comments.get(project.id).filter(comment => comment.id !== commentId));
@@ -195,12 +345,23 @@ async function signOut() {
 }
 async function deleteProject(id) {
   const project = state.projects.find(item => item.id === id);
-  if (!project?.owner || !project.real || !confirm(`Delete “${project.title}”? This can’t be undone.`)) return;
+  if (!project?.owner || !project.real || !(await confirmAction({ title: `Delete “${project.title}”?`, text: 'Its photos, likes and comments go with it. This can’t be undone.', confirmText: 'Delete project' }))) return;
   const { ok, data } = await api(`projects?id=${encodeURIComponent(id)}`, 'DELETE');
   if (!ok) { notify(errorOf(data)); return; }
   state.projects = state.projects.filter(item => item.id !== id);
   for (const key of ['likes', 'bookmarks']) state[key] = state[key].filter(value => value !== id);
   closeModal(); render(); notify('Project deleted.');
+}
+// Editing reuses the composer; the card, the feed and the open dialog show the new version.
+function editProject(id) {
+  const project = state.projects.find(item => item.id === id);
+  if (!project?.owner || !project.real) return;
+  openProjectComposer({
+    state, openModal, api, errorOf, project,
+    onPublished(updated) { Object.assign(project, updated); render(); },
+    onView: (projectId) => showProject(projectId),
+    onDone: () => closeModal(),
+  });
 }
 function shareProject() {
   openProjectComposer({
@@ -281,6 +442,7 @@ function navigate(page) {
   if (location.hash !== `#${page}`) history.pushState(null, '', `#${page}`);
   render();
   window.scrollTo({top:0,behavior:'instant'});
+  if (page === 'messages') pollMessages();
 }
 // Likes, saves and follows switch at once. Real projects and creators are then saved to the
 // account and put back if that fails; sample ones stay in this browser.
@@ -321,9 +483,22 @@ const actions = {
   setSettingsTab(tab) { state.settingsTab=tab; renderView(); },
   // Only a newly chosen photo (a data URL) is uploaded; otherwise the saved one stays.
   async saveProfile(profile) {
+    const Swal = await alerts();
+    Swal.fire({ title: 'Saving your changes…', allowOutsideClick: false, allowEscapeKey: false, didOpen: () => Swal.showLoading() });
     const { ok, data } = await api('profile', 'PUT', { ...profile, avatar: profile.avatar?.startsWith('data:') ? profile.avatar : undefined });
-    if (!ok) { notify(errorOf(data)); return false; }
-    applyAccount(data); render(); notify('Profile saved.'); return true;
+    if (!ok) { Swal.fire({ icon: 'error', title: 'Changes not saved', text: errorOf(data), confirmButtonText: 'Got it' }); return false; }
+    applyAccount(data);
+    Swal.fire({ icon: 'success', title: 'Profile saved', text: 'Your profile and social links are up to date.', timer: 2600, timerProgressBar: true });
+    render(); // Reaching 100% starts the celebration, which replaces this popup.
+    return true;
+  },
+  async changePassword(values) {
+    const Swal = await alerts();
+    Swal.fire({ title: 'Updating your password…', allowOutsideClick: false, allowEscapeKey: false, didOpen: () => Swal.showLoading() });
+    const { ok, data } = await api('auth/password', 'POST', values);
+    if (!ok) { Swal.close(); return data; }
+    Swal.fire({ icon: 'success', title: 'Password updated', text: 'Use your new password the next time you sign in.', timer: 2600, timerProgressBar: true });
+    return null;
   },
   // Remember-workspace is a browser setting; every other switch is saved to the account.
   async updatePreference(name,value) {
@@ -337,15 +512,15 @@ const actions = {
 };
 function renderHeader() {
   const unread=state.notifications.filter(item=>item.unread).length;
-  $('#workspace-header').innerHTML=`<div class="ws-header-inner"><a class="ws-brand" href="/" aria-label="Showlio home"><img src="/assets/images/showlio-logo-sm.webp" alt="Showlio" width="651" height="217"></a><form class="ws-global-search" id="ws-search-form" role="search">${icon('search')}<input id="ws-search-input" type="search" value="${esc(state.feed.query)}" placeholder="Search portfolios, skills or creators…" aria-label="Search portfolios and creators"></form><div class="ws-header-actions"><button class="ws-menu-button" id="ws-mobile-menu" aria-label="Toggle workspace navigation" aria-controls="workspace-sidebar" aria-expanded="false">${icon('menu')}</button><a href="#notifications" aria-label="Notifications${unread?`, ${unread} unread`:''}">${icon('bell')}${unread?'<i class="ws-notification-dot"></i>':''}</a><button data-action="messages" aria-label="Messages">${icon('message')}</button><button class="ws-account" data-action="account" aria-label="Account menu">${avatar(state.profile)}${icon('chevron-down')}</button></div></div>`;
+  $('#workspace-header').innerHTML=`<div class="ws-header-inner"><a class="ws-brand" href="/" aria-label="Showlio home"><img src="/assets/images/showlio-logo-sm.webp" alt="Showlio" width="651" height="217"></a><form class="ws-global-search" id="ws-search-form" role="search">${icon('search')}<input id="ws-search-input" type="search" value="${esc(state.feed.query)}" placeholder="Search portfolios, skills or creators…" aria-label="Search portfolios and creators"></form><div class="ws-header-actions"><button class="ws-menu-button" id="ws-mobile-menu" aria-label="Toggle workspace navigation" aria-controls="workspace-sidebar" aria-expanded="false">${icon('menu')}</button><a href="#notifications" aria-label="Notifications${unread?`, ${unread} unread`:''}">${icon('bell')}${unread?'<i class="ws-notification-dot"></i>':''}</a><a href="#messages" aria-label="Messages${state.messages.unread?`, ${state.messages.unread} unread`:''}">${icon('message')}${state.messages.unread?'<i class="ws-notification-dot"></i>':''}</a><button class="ws-account" data-action="account" aria-label="Account menu">${avatar(state.profile)}${icon('chevron-down')}</button></div></div>`;
 }
 function renderSidebar() {
   const profile=state.profile;
   const isAvailable=profile.availability==='available';
   const unread=state.notifications.filter(item=>item.unread).length;
   const nav=[['grid','Explore','explore'],['folder','My portfolio','projects'],['bookmark','Saved','saved'],['bell','Notifications','notifications'],['message','Messages','messages'],['settings','Settings','settings']];
-  const completion=profileCompletion(profile,state.projects.some(project=>project.owner));
-  $('#workspace-sidebar').innerHTML=`<img class="ws-cover" src="/assets/images/thumbs/workspace-mountains-cover.webp" alt="Alpine mountains at sunset" width="302" height="130"><div class="ws-profile-content"><div class="ws-profile-top"><div class="ws-avatar-wrap">${profile.avatar?`<img class="ws-main-avatar" src="${esc(profile.avatar)}" alt="${esc(profile.name)}" width="120" height="120">`:`<span class="ws-main-avatar ws-monogram" style="--hue:220" role="img" aria-label="${esc(profile.name)}">${esc(initials(profile.name))}</span>`}<button class="ws-avatar-camera" data-action="edit-photo" aria-label="Change profile photo">${icon('camera')}</button></div>${state.preferences.showAvailability?`<span class="ws-available ${isAvailable?'':'is-busy'}"><i></i>${isAvailable?'Available':profile.availability==='showcasing'?'Showcasing':'Unavailable'}</span>`:''}</div><h2 class="ws-profile-name">${esc(profile.name)}</h2><p class="ws-profile-headline">${esc(profile.headline||`@${profile.username}`)}</p><p class="ws-profile-location">${icon('pin')} ${esc(profile.location||'Location not set')}</p><p class="ws-profile-bio">${esc(profile.bio||'Add a short bio in Settings so people know what you create.')}</p><div class="ws-completion"><div><span>Profile completion</span><b>${completion}%</b></div><span class="ws-progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${completion}"><span style="width:${completion}%"></span></span>${completion<100?`<button class="ws-completion-link" data-action="complete-profile">Complete your profile ${icon('arrow')}</button>`:''}</div></div><a class="ws-btn ws-primary ws-create-portfolio" href="/portfolio/">${icon("plus")} Create portfolio</a><nav class="ws-nav" aria-label="Workspace navigation">${nav.map(([symbol,label,target])=>{const active=(target===state.page&&!state.feed.savedOnly&&!state.feed.mineOnly)||(target==='saved'&&state.page==='explore'&&state.feed.savedOnly)||(target==='projects'&&state.page==='explore'&&state.feed.mineOnly);return `<button class="${active?'active':''}" data-nav="${target}" ${active?'aria-current="page"':''}>${icon(symbol)}<span>${label}</span>${target==='notifications'&&unread?`<b class="ws-nav-count" aria-label="${unread} unread">${unread}</b>`:''}</button>`;}).join('')}</nav><p class="ws-demo-note">Explore shows sample creators and projects</p>`;
+  const completion=completionPercent();
+  $('#workspace-sidebar').innerHTML=`<img class="ws-cover" src="/assets/images/thumbs/workspace-mountains-cover.webp" alt="Alpine mountains at sunset" width="302" height="130"><div class="ws-profile-content"><div class="ws-profile-top"><div class="ws-avatar-wrap">${profile.avatar?`<img class="ws-main-avatar" src="${esc(profile.avatar)}" alt="${esc(profile.name)}" width="120" height="120">`:`<span class="ws-main-avatar ws-monogram" style="--hue:220" role="img" aria-label="${esc(profile.name)}">${esc(initials(profile.name))}</span>`}<button class="ws-avatar-camera" data-action="edit-photo" aria-label="Change profile photo">${icon('camera')}</button></div>${state.preferences.showAvailability?`<span class="ws-available ${isAvailable?'':'is-busy'}"><i></i>${isAvailable?'Available':profile.availability==='showcasing'?'Showcasing':'Unavailable'}</span>`:''}</div><h2 class="ws-profile-name">${esc(profile.name)}</h2><p class="ws-profile-headline">${esc(profile.headline||`@${profile.username}`)}</p><p class="ws-profile-location">${icon('pin')} ${esc(profile.location||'Location not set')}</p><p class="ws-profile-bio">${esc(profile.bio||'Add a short bio in Settings so people know what you create.')}</p>${completionHidden()?'':`<div class="ws-completion"><div><span>Profile completion</span><b>${completion}%</b></div><span class="ws-progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${completion}"><span style="width:${completion}%"></span></span>${completion<100?`<button class="ws-completion-link" data-action="complete-profile">Complete your profile ${icon('arrow')}</button>`:''}</div>`}</div><a class="ws-btn ws-primary ws-create-portfolio" href="/portfolio/">${icon("plus")} Create portfolio</a><nav class="ws-nav" aria-label="Workspace navigation">${nav.map(([symbol,label,target])=>{const active=(target===state.page&&!state.feed.savedOnly&&!state.feed.mineOnly)||(target==='saved'&&state.page==='explore'&&state.feed.savedOnly)||(target==='projects'&&state.page==='explore'&&state.feed.mineOnly);return `<button class="${active?'active':''}" data-nav="${target}" ${active?'aria-current="page"':''}>${icon(symbol)}<span>${label}</span>${(target==='notifications'?unread:target==='messages'?state.messages.unread:0)?`<b class="ws-nav-count" aria-label="${target==='notifications'?unread:state.messages.unread} unread">${target==='notifications'?unread:state.messages.unread}</b>`:''}</button>`;}).join('')}</nav><p class="ws-demo-note">Explore shows sample creators and projects</p>`;
 }
 let lastViewKey='';
 function renderView() {
@@ -353,17 +528,26 @@ function renderView() {
   view.classList.toggle('ws-enter',key!==lastViewKey);
   lastViewKey=key;
   withPreservedFocus(view, () => {
-    view.innerHTML=state.page==='settings'?renderSettings(state):state.page==='notifications'?renderNotifications(state):state.feed.mineOnly?renderPortfolio(state):state.feed.savedOnly?renderSaved(state):renderExplore(state);
+    view.innerHTML=state.page==='messages'?renderMessages(state):state.page==='settings'?renderSettings(state):state.page==='notifications'?renderNotifications(state):state.feed.mineOnly?renderPortfolio(state):state.feed.savedOnly?renderSaved(state):renderExplore(state);
     if(state.page==='settings')bindSettings(view,state,actions);
   });
+  if(state.page==='messages')scrollToLatest(view);
   state.popped='';
-  document.title=`Showlio — ${state.page==='settings'?'Account settings':state.page==='notifications'?'Notifications & activity':state.feed.mineOnly?'My portfolio':state.feed.savedOnly?'Saved projects':'Explore portfolios'}`;
+  document.title=`Showlio — ${state.page==='messages'?'Messages':state.page==='settings'?'Account settings':state.page==='notifications'?'Notifications & activity':state.feed.mineOnly?'My portfolio':state.feed.savedOnly?'Saved projects':'Explore portfolios'}`;
 }
-function render() { withPreservedFocus(document, () => { renderHeader(); renderSidebar(); renderView(); }, view); }
+function render() { withPreservedFocus(document, () => { renderHeader(); renderSidebar(); renderView(); }, view); celebrateCompletion(); }
 const shade=document.createElement('button'); shade.className='ws-mobile-shade'; shade.setAttribute('aria-label','Close navigation'); document.body.append(shade); shade.addEventListener('click',closeMenu);
-document.addEventListener('keydown',event=>{if(event.key==='Escape')closeMenu();});
-document.addEventListener('input',event=>{if(event.target.id==='ws-search-input'){state.feed.query=event.target.value;if(state.page==='explore')renderView();}});
-document.addEventListener('submit',event=>{if(event.target.id==='ws-search-form'){event.preventDefault();state.feed.query=$('#ws-search-input').value;state.feed.category='All';navigate('explore');}});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape')closeMenu();
+  // Enter sends; Shift+Enter starts a new line.
+  if(event.target.id==='ws-msg-input'&&event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();event.target.form.requestSubmit();}
+});
+document.addEventListener('input',event=>{
+  if(event.target.id==='ws-search-input'){state.feed.query=event.target.value;if(state.page==='explore')renderView();}
+  if(event.target.matches('[data-chat-filter]')){chat.filter=event.target.value;updateMessages(view,state);}
+  if(event.target.id==='ws-msg-input'){const field=event.target;chat.draft=field.value;field.form.classList.toggle('has-text',Boolean(field.value.trim()));field.style.height='auto';field.style.height=`${Math.min(field.scrollHeight,160)}px`;}
+});
+document.addEventListener('submit',event=>{if(event.target.matches('[data-message-form]')){event.preventDefault();sendMessage(event.target);return;}if(event.target.id==='ws-search-form'){event.preventDefault();state.feed.query=$('#ws-search-input').value;state.feed.category='All';navigate('explore');}});
 document.addEventListener('change',event=>{
   if(event.target.id==='ws-collection'){state.feed.mineOnly=event.target.value==='mine';state.feed.savedOnly=event.target.value==='saved';render();}
   if(event.target.id==='ws-only-saved'){state.feed.savedOnly=event.target.checked;render();}
@@ -375,8 +559,7 @@ document.addEventListener('click',event=>{
   const nav=button.dataset.nav;
   if(nav){
     if(['explore','projects','saved'].includes(nav)){state.feed={...state.feed,category:'All',query:'',mineOnly:nav==='projects',savedOnly:nav==='saved'};navigate('explore');}
-    else if(nav==='messages')openModal('Your messages','<p>Your demo inbox is quiet for now. Connected messaging is not available yet.</p><p class="ws-modal-note">No message is sent or received by this preview.</p>');
-    else navigate(nav);
+        else navigate(nav);
     return;
   }
   if(button.dataset.category){state.feed.category=button.dataset.category;if(dialog.open)closeModal();navigate('explore');return;}
@@ -385,9 +568,12 @@ document.addEventListener('click',event=>{
   if(button.dataset.project){showProject(button.dataset.project);return;}
   if(button.dataset.comments){showProject(button.dataset.comments,true);return;}
   if(button.dataset.person){showPerson(button.dataset.person);return;}
+  if(button.dataset.chatTheme){setChatTheme(button.dataset.chatTheme);return;}
+  if(button.dataset.conversation||button.dataset.messageTo||button.dataset.message){openConversation(button.dataset.conversation||button.dataset.messageTo||button.dataset.message);return;}
   if(button.dataset.copyLink){copyLink(button.dataset.copyLink);return;}
   for(const kind of ['follow','bookmark','like'])if(button.dataset[kind]){react(kind,button.dataset[kind]);return;}
   if(button.dataset.deleteProject){deleteProject(button.dataset.deleteProject);return;}
+  if(button.dataset.editProject){editProject(button.dataset.editProject);return;}
   if(button.dataset.deleteComment){deleteComment(button.dataset.deleteComment);return;}
   if(button.dataset.noteOpen){openNotification(button.dataset.noteOpen);return;}
   if(button.dataset.noteSave){const item=state.notifications.find(entry=>entry.id===button.dataset.noteSave);if(item)changeNotification(item.id,{saved:!item.saved}).then(ok=>ok&&notify(item.saved?'Notification saved.':'Removed from saved.'));return;}
@@ -407,12 +593,19 @@ document.addEventListener('click',event=>{
   if(action==='edit-photo'){state.settingsTab='profile';navigate('settings');view.querySelector('[data-avatar-input]')?.click();}
   if(action==='muted')openModal('Muted accounts','<p>You haven’t muted anyone in this demo.</p><p class="ws-modal-note">Connected moderation tools will become available with live accounts.</p>');
   if(action==='safety')openModal('Help & safety','<p>Share work you own, credit your collaborators, and keep personal information private. This workspace contains fictional profiles and sample activity.</p>');
-  if(action==='messages')openModal('Your messages','<p>Your demo inbox is quiet for now. Connected messaging is not available yet.</p>');
+  if(action==='messages')navigate('messages');
+  if(action==='new-message')openNewMessage();
+  if(action==='close-conversation'){chat.with='';renderView();}
+  if(action==='chat-details'){chat.details=!chat.details;renderView();}
+  if(action==='send-like'){const form=button.closest('form');if(form)sendMessage(form,true);}
+  if(action==='toggle-active-status')actions.updatePreference('showActiveStatus',state.preferences.showActiveStatus===false);
   if(action==='account'){const modal=openModal('Your workspace',`<div class="ws-modal-person">${avatar(state.profile)}<div><h3>${esc(state.profile.name)}</h3><p>${esc(state.profile.email)}</p></div></div><div class="ws-modal-actions"><button class="ws-btn ws-soft" id="ws-account-settings">${icon('settings')} Account settings</button><button class="ws-btn ws-outline" id="ws-switch-account">${icon('users')} Use another account</button><button class="ws-btn ws-outline" id="ws-sign-out">${icon('logout')} Sign out</button></div><p class="ws-modal-note">Both only affect this tab: your other tabs stay signed in to their accounts.</p>`);modal.querySelector('#ws-account-settings').addEventListener('click',()=>{closeModal();navigate('settings');});modal.querySelector('#ws-switch-account').addEventListener('click',()=>{forgetSlot();location.assign('/auth/#sign-in');});modal.querySelector('#ws-sign-out').addEventListener('click',()=>signOut());}
 });
-window.addEventListener('hashchange',()=>{state.page=['explore','notifications','settings'].includes(location.hash.slice(1))?location.hash.slice(1):'explore';render();window.scrollTo({top:0,behavior:'instant'});});
-state.page=['explore','notifications','settings'].includes(location.hash.slice(1))?location.hash.slice(1):'explore';
+window.addEventListener('hashchange',()=>{state.page=['explore','notifications','messages','settings'].includes(location.hash.slice(1))?location.hash.slice(1):'explore';render();window.scrollTo({top:0,behavior:'instant'});if(state.page==='messages')pollMessages();});
+state.page=['explore','notifications','messages','settings'].includes(location.hash.slice(1))?location.hash.slice(1):'explore';
 document.body.classList.add('ws-booting');
 render();
 if (!feed.ok) notify(`Community projects didn’t load: ${errorOf(feed.data)}`);
+pollMessages();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pollMessages(); });
 setTimeout(()=>document.body.classList.remove('ws-booting'),1800);

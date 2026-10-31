@@ -290,3 +290,30 @@ test('a creator page becomes a portfolio: profile, links, availability and publi
   assert.deepEqual(value.works.map((work) => [work.id, work.type, work.category, work.image, work.images.length]), [['p1', 'video', 'Video', photo('a'), 2], ['p2', 'product', 'AI Automation', '', 0], ['p3', 'other', '', '', 0]]);
   assert.equal(model.portfolioFromCreator({ profile: { username: 'x', availability: 'unavailable' } }).profile.availability, '');
 });
+
+test('Showlio projects fold into the portfolio: new ones first, linked ones refreshed, hand-made ones kept, samples gone', () => {
+  const photo = (name) => `https://abc.supabase.co/storage/v1/object/sign/project-media/u/p/${name}.webp?token=t`;
+  const page = (projects) => model.portfolioFromCreator({ profile: { name: 'Khing', headline: 'Editor', template: 'minimal' }, projects }).works;
+  assert.equal(model.portfolioFromCreator({ profile: { name: 'Khing', template: 'minimal' } }).style.layout, 'minimal', 'the page keeps the chosen template');
+  const first = model.mergeShowlioWorks([
+    { id: 'work-a', title: 'Flow', image: '/assets/images/project-habitify.webp', visible: true },
+    { id: 'work-b', title: 'Clay Collection', image: '/assets/images/portfolio-clay.jpg', visible: true },
+    { id: 'mine', title: 'My own site', image: '', visible: true },
+  ], page([{ id: 'p1', title: 'Reel', description: 'Cuts', categories: ['Video'], images: [photo('a')], tools: ['Premiere'] }]));
+  assert.deepEqual(first.map((work) => work.id), ['showlio-p1', 'mine'], 'samples are removed, the Showlio project comes first');
+  assert.deepEqual([first[0].title, first[0].type, first[0].category, first[0].image, first[0].skills, first[0].visible], ['Reel', 'video', 'Video', photo('a'), ['Premiere'], true]);
+  assert.equal(model.isShowlioWork(first[0]), true);
+  assert.equal(model.isShowlioWork(first[1]), false);
+
+  // The creator hides it, renames its type and moves it; a later load refreshes only Showlio's fields.
+  const arranged = [first[1], { ...first[0], visible: false, type: 'design', url: 'https://reel.example.com' }];
+  const second = model.mergeShowlioWorks(arranged, page([
+    { id: 'p2', title: 'New launch', categories: ['Design'], images: [] },
+    { id: 'p1', title: 'Reel (final)', description: 'Final cut', categories: ['Video'], images: [photo('b')], tools: [] },
+  ]));
+  assert.deepEqual(second.map((work) => work.id), ['showlio-p2', 'mine', 'showlio-p1']);
+  assert.deepEqual([second[2].title, second[2].image, second[2].visible, second[2].type, second[2].url], ['Reel (final)', photo('b'), false, 'design', 'https://reel.example.com']);
+
+  assert.deepEqual(model.mergeShowlioWorks(second, page([])).map((work) => work.id), ['mine'], 'projects deleted on Showlio leave the portfolio');
+  assert.deepEqual(model.mergeShowlioWorks(second, page([{ id: 'p2', title: 'New launch', images: [] }, { id: 'p1', title: 'Reel (final)', images: [] }])).length, 3, 'loading again never duplicates');
+});

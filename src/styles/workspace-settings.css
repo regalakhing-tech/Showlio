@@ -268,16 +268,6 @@
   white-space: nowrap;
 }
 
-.ws-settings-beta {
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: #ede5ff;
-  color: #8c60d9;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
 .ws-settings-ai > p {
   margin: 8px 0 12px;
   color: var(--ws-settings-muted);
@@ -641,12 +631,20 @@
   text-align: left;
 }
 
-.ws-settings-secondary-content {
-  max-width: 860px;
-}
-
 .ws-settings-preferences {
   overflow: hidden;
+}
+
+.ws-settings-password-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin: 0 25px 18px;
+}
+
+.ws-settings-password .ws-settings-form-footer {
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--ws-settings-border);
 }
 
 .ws-settings-preferences > .ws-settings-toggle-row,
@@ -968,6 +966,7 @@
 
   .ws-settings-preferences > .ws-settings-toggle-row,
   .ws-settings-social-fields,
+  .ws-settings-password-fields,
   .ws-settings-account-summary,
   .ws-settings-plan {
     margin-right: 18px;

@@ -37,3 +37,25 @@ body.workspace { background: #f4f8fb; color: #101735; font-size: 14px; line-heig
 .ws-load-error a { color: #1f6bff; font-weight: 600; }
 .ws-completion-link { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; color: #0068ff; background: #eef4ff; border-radius: 999px; transition: background .2s, gap .2s; }.ws-completion-link:hover { background: #e0ebff; gap: 9px; }.ws-completion-link:focus-visible { outline: 2px solid #0068ff; outline-offset: 2px; }.ws-completion-link .ws-icon { width: 14px; height: 14px; }
 .ws-danger { color: #c62f45; border-color: #f2c4cc; }.ws-danger:hover { background: #fff3f5; box-shadow: none; }
+/* SweetAlert2 save feedback, dressed as a Showlio dialog. */
+.swal2-container.swal2-backdrop-show { background: #10214066; backdrop-filter: blur(5px); }.ws-swal { width: min(400px,calc(100vw - 32px)); padding: 28px 24px 24px; border: 1px solid #e1e9f7; border-radius: 18px; color: #142044; box-shadow: 0 25px 90px #0c1c5133; }.ws-swal .swal2-title { padding: 6px 0 0; color: #142044; font-size: 22px; font-weight: 750; letter-spacing: -.4px; }.ws-swal .swal2-html-container { margin-top: 8px; padding: 0; color: #657797; font-size: 14px; line-height: 1.65; }.ws-swal .swal2-actions { margin-top: 22px; }.ws-swal .swal2-confirm { min-width: 130px; }.ws-swal .swal2-confirm:focus-visible { outline: 2px solid #0068ff; outline-offset: 2px; }.ws-swal .swal2-loader { border-color: #0b56ff transparent #7909ff transparent; }.ws-swal .swal2-timer-progress-bar { background: linear-gradient(105deg,#00a4ff,#0b56ff 55%,#7909ff); }
+.ws-swal .swal2-icon.swal2-success { border-color: #0b56ff4d; color: #0b56ff; }.ws-swal .swal2-icon.swal2-success .swal2-success-ring { border-color: #0b56ff4d; }.ws-swal .swal2-icon.swal2-success [class^=swal2-success-line] { background-color: #0b56ff; }.ws-swal .swal2-icon.swal2-error { border-color: #c62f45; color: #c62f45; }.ws-swal .swal2-icon.swal2-error [class^=swal2-x-mark-line] { background-color: #c62f45; }
+/* The completion meter folds away after the 100% celebration. */
+.ws-completion.is-leaving { overflow: hidden; animation: ws-completion-out .55s var(--ease-out,ease-out) forwards; }
+@keyframes ws-completion-out { from { max-height: 120px; } to { max-height: 0; margin-top: 0; padding-bottom: 0; opacity: 0; transform: translateY(-6px); border-bottom-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .ws-completion.is-leaving { animation: none; } }
+
+/* Showlio's own confirmation dialog (never the browser's), for deleting and other final steps. */
+.ws-swal-confirm .swal2-icon.ws-swal-danger { width: 64px; height: 64px; margin: 6px auto 0; border: 0 !important; border-radius: 20px; background: #fff1f3; color: #d92d45 !important; }
+.ws-swal-confirm .swal2-icon.ws-swal-danger .swal2-icon-content { font-size: inherit; }
+.ws-swal-confirm .ws-swal-danger .ws-icon { width: 30px; height: 30px; }
+.ws-swal .ws-swal-actions { flex-wrap: wrap; gap: 10px; }
+.ws-swal .swal2-actions .ws-btn { min-width: 128px; min-height: 44px; font-weight: 600; }
+.ws-btn.ws-danger-solid { border-color: transparent; background: #d92d45; color: #fff; }
+.ws-btn.ws-danger-solid:hover { background: #c1213a; box-shadow: 0 8px 18px -10px #d92d45; }
+.ws-swal .swal2-cancel:focus-visible, .ws-swal .swal2-confirm:focus-visible { outline: 2px solid #0068ff; outline-offset: 2px; }
+/* The creator's edit and delete in the project dialog */
+.ws-pv-owner { display: flex; gap: 6px; flex-shrink: 0; }
+.ws-pv-owner .ws-icon-button { width: 40px; height: 40px; border: 1px solid #e3e9f3; border-radius: 10px; background: #fff; }
+.ws-pv-owner .ws-icon-button:hover { color: #0b56ff; background: #f3f8ff; }
+.ws-pv-owner .ws-icon-button.is-danger:hover { color: #d92d45; background: #fff3f5; border-color: #f6cdd4; }

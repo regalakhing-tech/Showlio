@@ -17,6 +17,7 @@ require_once __DIR__ . '/controllers/HealthController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/ProfileController.php';
 require_once __DIR__ . '/controllers/CommunityController.php';
+require_once __DIR__ . '/controllers/MessagesController.php';
 
 load_env_file(dirname(__DIR__) . '/.env');
 

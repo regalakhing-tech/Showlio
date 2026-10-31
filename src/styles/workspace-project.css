@@ -463,3 +463,49 @@
     transition: none;
   }
 }
+
+/* A roomier project view: wider and taller, with the photos filling the height. */
+.ws-dialog.ws-dialog-wide:has(.ws-pv) {
+  width: min(1320px, calc(100% - 32px));
+}
+
+.ws-dialog:has(.ws-pv) .ws-dialog-shell {
+  min-height: min(86svh, 900px);
+  padding: 32px;
+}
+
+.ws-pv .ws-gallery-stage,
+.ws-pv-cover {
+  aspect-ratio: auto;
+  height: clamp(320px, 66svh, 720px);
+  max-height: none;
+}
+
+.ws-pv-cover img,
+.ws-pv-cover .ws-pcover {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.ws-pv-cover img {
+  object-fit: contain;
+}
+
+.ws-pv .ws-gallery-thumbs button {
+  width: 96px;
+  height: 68px;
+}
+
+@media (max-width: 860px) {
+  .ws-dialog:has(.ws-pv) .ws-dialog-shell {
+    min-height: 0;
+    padding: 23px;
+  }
+
+  /* Phones keep the photo's shape instead of a tall frame. */
+  .ws-pv .ws-gallery-stage,
+  .ws-pv-cover {
+    height: auto;
+    aspect-ratio: 16 / 10;
+  }
+}

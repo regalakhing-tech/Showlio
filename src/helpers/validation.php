@@ -137,6 +137,25 @@ function validate_reset(array $input): array
     return [$values + ['password' => $password], $errors + new_password_errors($password, input_string($input, 'confirm'))];
 }
 
+/**
+ * Settings > Account: the current password, then the new one twice.
+ * @param array<string, mixed> $input
+ * @return array{0: array{current: string, password: string}, 1: array<string, string>}
+ */
+function validate_password_change(array $input): array
+{
+    $current = input_string($input, 'current');
+    $password = input_string($input, 'password');
+    $errors = array_filter([
+        'current' => $current === '' || strlen($current) > 72 ? 'Enter your current password.' : null,
+    ]) + new_password_errors($password, input_string($input, 'confirm'));
+    if (!isset($errors['password']) && $current !== '' && $password === $current) {
+        $errors['password'] = 'Choose a password different from your current one.';
+    }
+
+    return [['current' => $current, 'password' => $password], $errors];
+}
+
 /** Same rule as the public.https_url domain in the database. */
 function https_url_error(string $url): ?string
 {

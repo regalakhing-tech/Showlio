@@ -1,4 +1,5 @@
-import { filterWorks, normalizePortfolio, portfolioProgress, visibleWorks } from './portfolio-model.js';
+import { filterWorks, normalizePortfolio, portfolioProgress, visibleWorks, isShowlioWork, LOGO_SIZES } from './portfolio-model.js';
+import { renderPortfolio } from './portfolio-render.js';
 
 const esc = (value = '') => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 // Icons missing from the shared sprite are drawn inline.
@@ -20,10 +21,10 @@ const selected = value => value ? ' is-active' : '';
 const checked = value => value ? ' checked' : '';
 const button = (action, label, icon = '', className = 'pb-outline') => `<button type="button" class="pb-btn ${className}" data-action="${action}">${icon ? i(icon) : ''}${label}</button>`;
 
-function field(name, label, value, { type = 'text', max = 160, placeholder = '', required = false, hint = '', rows = 0, profile = true, count = false } = {}) {
+function field(name, label, value, { type = 'text', max = 160, placeholder = '', required = false, hint = '', rows = 0, profile = true, count = false, locked = false } = {}) {
   const id = `pb-${profile ? 'profile' : 'work'}-${name}`;
   const described = [hint ? `${id}-hint` : '', count ? `${id}-count` : ''].filter(Boolean).join(' ');
-  const attributes = `id="${id}" ${profile ? `data-profile="${name}"` : `name="${name}"`} maxlength="${max}"${required ? ' required' : ''}${described ? ` aria-describedby="${described}"` : ''}${count ? ' data-count' : ''} placeholder="${esc(placeholder)}"`;
+  const attributes = `id="${id}" ${profile ? `data-profile="${name}"` : `name="${name}"`} maxlength="${max}"${required ? ' required' : ''}${described ? ` aria-describedby="${described}"` : ''}${count ? ' data-count' : ''}${locked ? ' readonly' : ''} placeholder="${esc(placeholder)}"`;
   const control = rows ? `<textarea ${attributes} rows="${rows}">${esc(value)}</textarea>` : `<input type="${type}" ${attributes} value="${esc(value)}">`;
   const counter = count ? `<small class="pb-count" id="${id}-count" aria-live="polite">${Array.from(String(value ?? '')).length}/${max}</small>` : '';
   return `<div class="pb-field"><label for="${id}">${label}</label>${count ? `<div class="pb-count-wrap">${control}${counter}</div>` : control}${hint ? `<small id="${id}-hint">${hint}</small>` : ''}</div>`;
@@ -41,7 +42,7 @@ export function renderProfile(p) {
   return `<section class="pb-form-pane" aria-labelledby="pb-profile-title">${heading('Create your portfolio', 'Start with you. Add your work next.', 'pb-profile-title')}<div class="pb-form">
     <div class="pb-identity">${identityUpload(profile, 'logo', safe.logo)}${identityUpload(profile, 'avatar', safe.avatar)}</div>
     <p class="pb-sync-note">${i('check-circle')}<span>Your photo, name, role, location, bio, skills, website and Instagram are your Showlio profile. Changes here update it everywhere.</span></p>
-    ${field('name', 'Display name', profile.name, { max: 60, placeholder: 'Your name', required: true })}
+    <div class="pb-grid2">${field('name', 'Display name', profile.name, { max: 60, placeholder: 'Your name', required: true, hint: 'The big name on your page.' })}${field('brand', 'Name beside your logo (optional)', profile.brand, { max: 40, placeholder: 'e.g. Khing Studio', hint: 'Shown next to your logo in the header and footer. Leave empty for just the logo.' })}</div>
     ${field('role', 'Your role', profile.role, { max: 100, placeholder: 'Product designer & developer', required: true })}
     ${field('intro', 'Short introduction', profile.intro, { max: 280, placeholder: 'Tell people what you create.', rows: 3, count: true })}
     <div class="pb-field"><label for="pb-profile-slug">Portfolio page name <span class="pb-tip" title="This becomes the end of your portfolio link.">${i('info')}</span></label><div class="pb-input-prefix"><span>/portfolio/view/</span><input id="pb-profile-slug" data-profile="slug" maxlength="80" type="text" value="${esc(profile.slug)}" placeholder="your-name" pattern="[a-z0-9]+(-[a-z0-9]+)*" autocapitalize="none" spellcheck="false" required aria-describedby="pb-slug-hint"></div><small id="pb-slug-hint">Lowercase letters, numbers and hyphens. Your saved preview opens in this browser.</small></div>
@@ -68,15 +69,16 @@ function workCard(work, index, works, reorder, order) {
   const included = work.visible !== false;
   const id = esc(work.id);
   const name = esc(title);
+  const linked = isShowlioWork(work);
   return `<article class="pb-work-card" data-work-id="${id}" data-included="${included}" style="--i:${Math.min(order, 11)}"${reorder ? ' draggable="true"' : ''} aria-label="${name}">
     <button type="button" class="pb-work-image" data-edit-work="${id}" aria-label="Edit ${name}">${image ? `<img src="${esc(image)}" alt="" loading="lazy" draggable="false">` : `<span class="pb-work-placeholder">${i(typeIcons[type[0]])}</span>`}</button>
     ${reorder ? `<span class="pb-card-grip is-dragging-handle" title="Drag to reorder" aria-hidden="true">${i('grip')}</span>` : `<button type="button" class="pb-card-grip" data-action="reorder" aria-label="Reorder work" title="Reorder work">${i('grip')}</button>`}
     <div class="pb-card-menu"><button type="button" class="pb-icon-button pb-card-more" data-card-menu aria-expanded="false" aria-label="More actions for ${name}" title="More actions">${i('more')}</button><div class="pb-menu" role="group" aria-label="Actions for ${name}" hidden>
       <button type="button" data-edit-work="${id}">${i('pen')}Edit work</button>
       <label class="pb-menu-switch"><span>Show in portfolio</span><input class="pb-switch" type="checkbox" data-toggle-work="${id}"${checked(included)} aria-label="Include ${name} in portfolio"></label>
-      <button type="button" class="pb-menu-danger" data-delete-work="${id}" aria-label="Delete ${name}">${i('trash')}Delete</button>
+      ${linked ? '' : `<button type="button" class="pb-menu-danger" data-delete-work="${id}" aria-label="Delete ${name}">${i('trash')}Delete</button>`}
     </div></div>
-    <div class="pb-card-body"><h2 title="${name}">${name}</h2><div class="pb-card-meta"><span class="pb-type-tag" data-type="${type[0]}">${type[1]}</span><span class="pb-status${included ? ' is-included' : ''}">${included ? 'Included' : 'Draft'}</span></div>
+    <div class="pb-card-body"><h2 title="${name}">${name}</h2><div class="pb-card-meta"><span class="pb-type-tag" data-type="${type[0]}">${type[1]}</span><span class="pb-status${included ? ' is-included' : ''}">${included ? 'Included' : 'Draft'}</span></div>${linked ? `<p class="pb-linked">${i('link')}From your Showlio uploads</p>` : ''}
     ${reorder ? `<div class="pb-card-actions"><span>Move</span><button type="button" class="pb-icon-button" data-move-work="-1" data-work-id="${id}" aria-label="Move ${name} earlier"${index === 0 ? ' disabled' : ''}>${i('arrow-left')}</button><button type="button" class="pb-icon-button pb-flip" data-move-work="1" data-work-id="${id}" aria-label="Move ${name} later"${index === works.length - 1 ? ' disabled' : ''}>${i('arrow-left')}</button></div>` : ''}</div>
   </article>`;
 }
@@ -88,27 +90,28 @@ export function renderWorks(p, { query = '', type = 'all', reorder = false } = {
   return `<section class="pb-library"><div class="pb-heading-row">${heading('Add work to your portfolio', 'Show the websites, apps, projects, and products you create.')}${addMenu}</div>
     <div class="pb-library-toolbar"><label class="pb-search">${i('search')}<span class="pb-sr-only">Search your work</span><input id="pb-work-search" type="search" value="${esc(query)}" placeholder="Search your work"></label><div class="pb-filters" aria-label="Filter work type">${Object.entries(filterLabels).map(([value, label]) => `<button type="button" data-work-filter="${value}" class="${type === value ? 'is-active' : ''}" aria-pressed="${type === value}">${label}</button>`).join('')}</div>${works.length ? `<span class="pb-work-count" title="${visibleWorks(p).length} included in your portfolio">${works.length} ${works.length === 1 ? 'item' : 'items'}</span>${button('reorder', reorder ? 'Done' : 'Reorder', reorder ? 'check' : 'list', reorder ? 'pb-primary pb-reorder' : 'pb-outline pb-reorder')}` : ''}</div>
     ${reorder ? '<p class="pb-reorder-hint">Drag a card, or use its arrow buttons, to change the order.</p>' : ''}
-    <div class="pb-work-grid">${filtered.length ? filtered.map((work, order) => workCard(work, works.indexOf(work), works, reorder, order)).join('') : `<div class="pb-empty">${i(works.length ? 'search' : 'folder')}<h2>${works.length ? 'No matching work' : 'Make room for your best work'}</h2><p>${works.length ? 'Try another search or work type to find what you’re looking for.' : 'Bring your projects, products and ideas together. Start with one, then keep adding as you grow.'}</p>${works.length ? '' : `<div class="pb-empty-actions">${button('add-work', 'Add your first work', 'plus', 'pb-primary')}${button('start-collection', 'Load starter collection', 'grid', 'pb-ghost')}</div>`}</div>`}</div>
+    <div class="pb-work-grid">${filtered.length ? filtered.map((work, order) => workCard(work, works.indexOf(work), works, reorder, order)).join('') : `<div class="pb-empty">${i(works.length ? 'search' : 'folder')}<h2>${works.length ? 'No matching work' : 'Make room for your best work'}</h2><p>${works.length ? 'Try another search or work type to find what you’re looking for.' : 'Projects you post on Showlio appear here automatically. You can also add any other work by hand.'}</p>${works.length ? '' : `<div class="pb-empty-actions">${button('add-work', 'Add your first work', 'plus', 'pb-primary')}<a class="pb-btn pb-ghost" href="/app/">${i('upload')}Post a project on Showlio</a></div>`}</div>`}</div>
     ${works.length ? `<button type="button" class="pb-add-work" data-action="add-work">${i('plus')}Add another project or product</button>` : ''}
   </section>`;
 }
 
-const miniLayouts = {
-  classic: '<i class="pb-mini-bar"></i><i class="pb-mini-hero"><b></b><b></b></i><i class="pb-mini-grid"><b></b><b></b><b></b><b></b><b></b><b></b></i>',
-  minimal: '<i class="pb-mini-bar"></i><i class="pb-mini-hero"><b></b><b></b></i><i class="pb-mini-grid"><b></b><b></b></i>',
-  showcase: '<i class="pb-mini-bar"></i><i class="pb-mini-banner"></i><i class="pb-mini-grid"><b></b><b></b><b></b></i>',
-};
+// Each template choice shows the creator's own portfolio in that template, as a scaled-down page.
+// Ids are removed so the miniatures never clash with the live preview, and links and buttons become
+// plain text: the miniature sits inside the template's own button, which cannot hold other controls.
+const thumbnail = (p, layout) => renderPortfolio({ ...p, style: { ...p.style, layout } }, { embedded: true })
+  .replace(/\s(?:id|aria-labelledby|for)="[^"]*"/g, '')
+  .replace(/<(\/?)(?:button|a|details|summary)\b/g, '<$1span');
 
 export function renderStyle(p) {
   const style = normalizePortfolio(p).style;
-  const layouts = [['classic', 'Classic', 'A clean, versatile layout for all types of work.'], ['minimal', 'Minimal', 'A focused, modern layout.'], ['showcase', 'Showcase', 'A bold, visual layout for standout work.']];
+  const layouts = [['classic', 'Studio', 'Bright and image-first, with a photo collage.'], ['minimal', 'Editorial', 'Warm paper, serif type, one big project per row.'], ['showcase', 'Spotlight', 'Dark and cinematic, with your photo behind your name.'], ['bento', 'Bento', 'Tidy tiles: you, your skills and your latest work at a glance.'], ['gallery', 'Gallery', 'A calm wall of your work, each piece at its true shape.']];
   const colors = [['#006aff', 'Blue'], ['#7958ef', 'Violet'], ['#15ad8a', 'Green'], ['#ec64a2', 'Pink'], ['#f09c45', 'Orange'], ['#172545', 'Navy']];
   return `<section class="pb-form-pane pb-style-pane">${heading('Your portfolio, your style', 'Choose a look for your entire portfolio.')}<div class="pb-style-rows">
-    <section class="pb-style-row"><h2>Layout</h2><div class="pb-style-layouts">${layouts.map(([value, label, description]) => `<button type="button" class="pb-style-option${selected(style.layout === value)}" data-style="layout" data-style-value="${value}" aria-pressed="${style.layout === value}"><span class="pb-mini-layout is-${value}" aria-hidden="true">${miniLayouts[value]}</span><strong>${label}</strong><small>${description}</small></button>`).join('')}</div></section>
+    <section class="pb-style-row"><h2>Template</h2><div class="pb-style-layouts">${layouts.map(([value, label, description]) => `<button type="button" class="pb-style-option${selected(style.layout === value)}" data-style="layout" data-style-value="${value}" aria-pressed="${style.layout === value}"><span class="pb-template-thumb" aria-hidden="true"><span class="pb-template-page" inert>${thumbnail(p, value)}</span></span><strong>${label}</strong><small>${description}</small></button>`).join('')}</div></section>
     <section class="pb-style-row"><h2>Accent color</h2><div class="pb-swatches">${colors.map(([value, label]) => `<button type="button" class="pb-swatch${selected(style.accent === value)}" data-style="accent" data-style-value="${value}" style="--swatch:${value}" aria-label="${label} accent" aria-pressed="${style.accent === value}"></button>`).join('')}<div class="pb-color-input"><input type="color" data-style="accent" value="${style.accent}" aria-label="Choose custom accent color"><input type="text" data-style="accent" value="${style.accent}" pattern="#[a-fA-F0-9]{6}" maxlength="7" aria-label="Accent color hex code" spellcheck="false"></div></div></section>
     <section class="pb-style-row"><h2>Page background</h2><div class="pb-choices">${[['white', 'White', 'A clean, neutral background.'], ['tint', 'Soft tint', 'A subtle tint of your accent.']].map(([value, label, description]) => `<button type="button" class="pb-choice${selected(style.background === value)}" data-style="background" data-style-value="${value}" aria-pressed="${style.background === value}"><span class="pb-radio" aria-hidden="true"></span><span><strong>${label}</strong><small>${description}</small></span></button>`).join('')}</div></section>
-    <section class="pb-style-row"><h2>Typography</h2><div class="pb-type-row"><span class="pb-type-pill">Inter${i('check')}</span><small>Matches your Showlio style.</small></div></section>
-    <section class="pb-style-row"><h2>Header</h2><div><label class="pb-toggle-row"><input class="pb-switch" type="checkbox" data-style="showLogo"${checked(style.showLogo)}><span><strong>Show my logo</strong><small>Display your personal logo in the header.</small></span></label><label class="pb-toggle-row"><input class="pb-switch" type="checkbox" data-style="showAvatar"${checked(style.showAvatar)}><span><strong>Show profile photo</strong><small>Display your profile photo on your homepage.</small></span></label></div></section>
+    <section class="pb-style-row"><h2>Typography</h2><div class="pb-type-row"><span class="pb-type-pill">${style.layout === 'minimal' ? 'Instrument Serif + Inter' : 'Inter'}${i('check')}</span><small>${style.layout === 'minimal' ? 'Editorial pairs a serif with Inter.' : 'Matches your Showlio style.'}</small></div></section>
+    <section class="pb-style-row"><h2>Header</h2><div><label class="pb-toggle-row"><input class="pb-switch" type="checkbox" data-style="showLogo"${checked(style.showLogo)}><span><strong>Show my logo</strong><small>Your logo, or one drawn from your initials.</small></span></label><div class="pb-logo-size"><label for="pb-logo-size">Logo size</label><input id="pb-logo-size" type="range" data-style="logoSize" min="${LOGO_SIZES.min}" max="${LOGO_SIZES.max}" step="2" value="${style.logoSize}"${style.showLogo ? '' : ' disabled'} aria-describedby="pb-logo-size-value"><output id="pb-logo-size-value" for="pb-logo-size">${style.logoSize} px</output></div><label class="pb-toggle-row"><input class="pb-switch" type="checkbox" data-style="showAvatar"${checked(style.showAvatar)}><span><strong>Show profile photo</strong><small>Display your profile photo on your homepage.</small></span></label></div></section>
   </div><button type="button" class="pb-btn pb-ghost pb-reset" data-action="reset-style">${i('refresh')}Reset style</button></section>`;
 }
 
@@ -126,13 +129,15 @@ export function renderPublish(p, { ready = false, snapshot = null } = {}) {
 
 export function renderWorkForm(work = {}) {
   const image = normalizePortfolio({ works: [work] }).works[0]?.image;
-  return `<form id="pb-work-form"><div class="pb-modal-body"><div class="pb-form">
-    ${field('title', 'Work title', work.title, { profile: false, required: true, placeholder: 'Give your work a name' })}
+  // A Showlio project's title, description, photos and tools come from Showlio; edit them in the workspace.
+  const linked = isShowlioWork(work);
+  return `<form id="pb-work-form"><div class="pb-modal-body"><div class="pb-form">${linked ? `<p class="pb-linked-note">${i('link')}<span>This project comes from your Showlio uploads. Its title, description, photos and tools update from there. Here you choose its type, your role, a link, and whether it shows.</span></p>` : ''}
+    ${field('title', 'Work title', work.title, { profile: false, required: true, placeholder: 'Give your work a name', locked: linked })}
     <div class="pb-field"><label for="pb-work-type">Work type</label><select id="pb-work-type" name="type">${types.map(([value, label]) => `<option value="${value}"${(work.type || 'website') === value ? ' selected' : ''}>${label}</option>`).join('')}</select></div>
-    <div class="pb-field"><span>Cover image (optional)</span><label class="pb-upload pb-cover-upload"><span id="pb-work-image-preview">${image ? `<img src="${esc(image)}" alt="Current work cover">` : `${i('upload')}<strong>Upload a cover image</strong><small>JPG, PNG or WebP · up to 5 MB</small>`}</span><input id="pb-work-image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload work cover image"></label><button type="button" class="pb-btn pb-ghost pb-remove-image" data-action="clear-work-image">Remove image</button></div>
-    ${field('description', 'Description (optional)', work.description, { profile: false, max: 2000, rows: 3, placeholder: 'What did you create, and why does it matter?' })}
+    ${linked ? (image ? `<div class="pb-field"><span>Cover image</span><span class="pb-upload pb-cover-upload is-linked"><img src="${esc(image)}" alt="Project cover from Showlio"></span></div>` : '') : `<div class="pb-field"><span>Cover image (optional)</span><label class="pb-upload pb-cover-upload"><span id="pb-work-image-preview">${image ? `<img src="${esc(image)}" alt="Current work cover">` : `${i('upload')}<strong>Upload a cover image</strong><small>JPG, PNG or WebP · up to 5 MB</small>`}</span><input id="pb-work-image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload work cover image"></label><button type="button" class="pb-btn pb-ghost pb-remove-image" data-action="clear-work-image">Remove image</button></div>`}
+    ${field('description', 'Description (optional)', work.description, { profile: false, max: 2000, rows: 3, placeholder: 'What did you create, and why does it matter?', locked: linked })}
     ${field('url', 'Project link (optional)', work.url, { profile: false, type: 'url', max: 2048, placeholder: 'https://your-project.com', hint: 'Use an HTTPS link.' })}
-    <div class="pb-grid2">${field('role', 'Your role (optional)', work.role, { profile: false, placeholder: 'e.g. Product designer' })}${field('skills', 'Skills (optional)', Array.isArray(work.skills) ? work.skills.join(', ') : '', { profile: false, max: 1000, placeholder: 'Figma, React, Branding', hint: 'Separate skills with commas.' })}</div>
+    <div class="pb-grid2">${field('role', 'Your role (optional)', work.role, { profile: false, placeholder: 'e.g. Product designer' })}${field('skills', 'Skills (optional)', Array.isArray(work.skills) ? work.skills.join(', ') : '', { profile: false, max: 1000, placeholder: 'Figma, React, Branding', hint: linked ? 'The tools listed on your Showlio project.' : 'Separate skills with commas.', locked: linked })}</div>
     <label class="pb-toggle-row"><input class="pb-switch" type="checkbox" name="visible"${checked(work.visible !== false)}><span><strong>Include in portfolio</strong><small>Turn this off to keep the work as a draft.</small></span></label>
   </div></div><footer class="pb-modal-footer">${button('close-modal', 'Cancel')}<button type="submit" class="pb-btn pb-primary">Save work${i('check')}</button></footer></form>`;
 }

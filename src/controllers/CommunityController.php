@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+// Portfolio page templates: Studio, Editorial, Spotlight, Bento and Gallery on screen.
+const PORTFOLIO_TEMPLATES = ['classic', 'minimal', 'showcase', 'bento', 'gallery'];
+
 // /api/feed, /api/projects and /api/creators handlers: the Explore feed,
 // posting and deleting projects, likes, saves, views and follows. Every call
 // runs as the signed-in creator, so Row Level Security decides what they reach.
@@ -39,7 +42,7 @@ function sign_project_media(array $supabase, ?string $token, array $paths): arra
  * @param array<string, mixed> $project a workspace_feed() project
  * @return array<string, mixed>
  */
-function project_card(array $project, string $me, bool $liked, array $images): array
+function project_card(array $project, string $me, bool $liked, array $images, array $media = []): array
 {
     return [
         'id' => $project['id'],
@@ -51,6 +54,8 @@ function project_card(array $project, string $me, bool $liked, array $images): a
         'tools' => $project['tools'],
         'creator' => $project['creatorId'],
         'owner' => $project['creatorId'] === $me,
+        // The creator's own photos with their storage paths, so the project can be edited.
+        'media' => $project['creatorId'] === $me ? $media : [],
         'views' => (int) $project['views'],
         // Cards add the viewer's own like on top, the same way they do for sample projects.
         'likes' => max(0, (int) $project['likes'] - ($liked ? 1 : 0)),
@@ -101,9 +106,10 @@ function feed_show(array $supabase): never
     }
     $urls = sign_project_media($supabase, $token, array_values(array_unique($paths)));
     $gallery = static fn (array $project): array => array_values(array_filter(array_map(static fn (string $path): ?string => $urls[$path] ?? null, $photos($project))));
+    $media = static fn (array $project): array => array_values(array_filter(array_map(static fn (string $path): ?array => isset($urls[$path]) ? ['path' => $path, 'url' => $urls[$path]] : null, $photos($project))));
 
     json_response([
-        'projects' => array_map(static fn (array $project): array => project_card($project, $me, isset($liked[$project['id']]), $gallery($project)), $feed['projects']),
+        'projects' => array_map(static fn (array $project): array => project_card($project, $me, isset($liked[$project['id']]), $gallery($project), $media($project)), $feed['projects']),
         'creators' => array_map(static fn (array $creator): array => creator_card($supabase, $creator), $feed['creators']),
         'likes' => $feed['likes'],
         'bookmarks' => $feed['bookmarks'],
@@ -152,6 +158,7 @@ function portfolio_show(array $supabase): never
             'visible' => (bool) $profile['visible'],
             'own' => (bool) $profile['own'],
             'joined' => (int) (strtotime((string) $profile['joinedAt']) * 1000),
+            'template' => in_array($profile['template'] ?? null, PORTFOLIO_TEMPLATES, true) ? $profile['template'] : 'classic',
         ],
         'skills' => $page['skills'],
         'links' => $page['links'],
@@ -169,6 +176,20 @@ function portfolio_show(array $supabase): never
             'created' => (int) (strtotime((string) $project['shownAt']) * 1000),
         ], $page['projects']),
     ]);
+}
+
+/** @param array{url: string, publishable_key: string, secret_key: string} $supabase */
+function portfolio_template_save(array $supabase): never
+{
+    $template = input_string(read_json_body(), 'template');
+    if (!in_array($template, PORTFOLIO_TEMPLATES, true)) {
+        invalid_input(['template' => 'Choose one of the portfolio templates.']);
+    }
+    [$status, $data] = creator_rpc($supabase, 'set_my_portfolio_template', ['choice' => $template]);
+    if ($status !== 200 || !is_array($data)) {
+        rpc_failure($status, $data, 'Your profile isn’t ready yet. Confirm your email, then sign in again.');
+    }
+    json_response(['template' => $data['template']]);
 }
 
 /** @param array{url: string, publishable_key: string, secret_key: string} $supabase */
@@ -207,6 +228,48 @@ function project_create(array $supabase): never
         'tools' => $values['tools'], 'creatorId' => $me, 'views' => 0, 'likes' => 0, 'duration' => '',
         'shownAt' => gmdate('c'), 'visibility' => 'published',
     ], $me, false, [])], 201);
+}
+
+/**
+ * Edits one of the creator's projects: its details, and which photos stay in what order
+ * (keep: [{path, position}]). Photos left out are deleted; new ones follow through POST /api/projects/media.
+ * @param array{url: string, publishable_key: string, secret_key: string} $supabase
+ */
+function project_update(array $supabase): never
+{
+    $input = read_json_body();
+    $id = uuid_input($input['id'] ?? null);
+    [$values, $errors] = validate_project($input);
+    $keep = $input['keep'] ?? [];
+    if (!is_array($keep) || !array_is_list($keep) || count($keep) > 10) {
+        $errors['keep'] = 'A project holds up to 10 photos.';
+    }
+    $order = [];
+    foreach (is_array($keep) ? $keep : [] as $photo) {
+        $path = is_array($photo) ? ($photo['path'] ?? null) : null;
+        $position = is_array($photo) ? ($photo['position'] ?? null) : null;
+        $ownFolder = is_string($path) && preg_match('~^[0-9a-z-]{1,64}/' . preg_quote($id, '~') . '/[0-9a-f]{24}\.[a-z]{3,4}$~', $path) === 1;
+        if (!$ownFolder || !is_int($position) || $position < 0 || $position > 9) {
+            $errors['keep'] = 'One of those photos isn’t part of this project.';
+            break;
+        }
+        $order[] = ['path' => $path, 'position' => $position];
+    }
+    if ($errors !== []) {
+        invalid_input($errors);
+    }
+    [$status, $result] = creator_rpc($supabase, 'update_my_project', [
+        'project' => $id,
+        'details' => ['title' => $values['title'], 'summary' => $values['description'], 'categories' => [$values['category']], 'tools' => $values['tools']],
+        'keep' => $order,
+    ]);
+    if ($status !== 200 || !is_array($result)) {
+        rpc_failure($status, $result, 'That project no longer exists.');
+    }
+    if (($result['removed'] ?? []) !== []) {
+        supabase_request($supabase, 'DELETE', '/storage/v1/object/project-media', ['prefixes' => $result['removed']], user_token($supabase));
+    }
+    json_response(['updated' => true, 'removed' => count($result['removed'] ?? [])]);
 }
 
 /**

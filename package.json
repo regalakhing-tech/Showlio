@@ -26,6 +26,8 @@
     "tailwindcss": "4.3.3"
   },
   "dependencies": {
-    "qrcode-generator": "2.0.4"
+    "canvas-confetti": "1.9.4",
+    "qrcode-generator": "2.0.4",
+    "sweetalert2": "11.26.25"
   }
 }

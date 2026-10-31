@@ -52,7 +52,7 @@ export function creatorMarkup(person, page, { self = false, following = false, f
   ].join('');
   const actions = self
     ? `<button class="ws-btn ws-outline" data-action="complete-profile">${icon('pen')}Edit profile</button>`
-    : `<button class="ws-btn ${following ? 'ws-soft' : 'ws-outline'} ws-cp-follow" data-follow="${esc(person.id)}" aria-pressed="${following}">${following ? `${icon('check')}Following` : `${icon('plus')}Follow`}</button>`;
+    : `<button class="ws-btn ${following ? 'ws-soft' : 'ws-outline'} ws-cp-follow" data-follow="${esc(person.id)}" aria-pressed="${following}">${following ? `${icon('check')}Following` : `${icon('plus')}Follow`}</button><button class="ws-btn ws-outline" data-message="${esc(person.id)}">${icon('message')}Message</button>`;
   const privateNote = self && page && !profile.visible
     ? `<div class="ws-cp-note">${icon('lock')}<p><strong>Only you can see your portfolio.</strong> Your profile is private, so the link won’t open for anyone else.</p><button class="ws-btn ws-soft" data-action="make-public">Make it public</button></div>`
     : '';

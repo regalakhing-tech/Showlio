@@ -55,3 +55,41 @@ test('work details show the category and every extra photo', () => {
   assert.equal((detail.match(/<img /g) ?? []).length, 3, 'the cover once, then the two other photos');
   assert.match(renderer.renderPortfolio(value), /<span class="pf-work-type">Video &lt;b&gt;<\/span>/);
 });
+
+test('a blank name stays blank, the logo size is the creator’s, and Spotlight puts their photo behind the name', () => {
+  const blank = renderer.renderPortfolio({ profile: { name: '', role: '', logo: '/assets/images/logo.png' }, style: { logoSize: 96 }, works: [] });
+  assert.doesNotMatch(blank, /Your name|Your creative role|<h1>/);
+  assert.match(blank, /--pf-logo:96px/);
+  assert.match(blank, /href="#pf-top" aria-label="Back to top"><img class="pf-logo-image"/, 'the logo alone still has a name for screen readers');
+  assert.doesNotMatch(renderer.renderPortfolio({ profile: { name: '' }, works: [] }), /class="pf-mark/, 'no initials to draw, no empty logo');
+  assert.match(renderer.renderPortfolio({ profile: { name: 'Ana' }, style: { logoSize: 999 } }), /--pf-logo:40px/, 'out-of-range sizes fall back');
+  const spotlight = renderer.renderPortfolio({ profile: { name: 'Ana', avatar: '/assets/images/ana.webp' }, style: { layout: 'showcase' }, works: [{ id: 'w', title: 'Reel', image: '/assets/images/reel.webp', visible: true }] });
+  assert.match(spotlight, /pf-backdrop is-portrait[^>]*><img class="pf-backdrop-image" src="\/assets\/images\/ana\.webp"/);
+  const noPhoto = renderer.renderPortfolio({ profile: { name: 'Ana' }, style: { layout: 'showcase' }, works: [{ id: 'w', title: 'Reel', image: '/assets/images/reel.webp', visible: true }] });
+  assert.match(noPhoto, /class="pf-backdrop" aria-hidden="true"><img class="pf-backdrop-image" src="\/assets\/images\/reel\.webp"/, 'latest work stands in without a photo');
+});
+
+test('the name beside the logo is its own: empty by default, never copied from the display name', () => {
+  const plain = renderer.renderPortfolio({ profile: { name: 'Khing Jay Regala' }, works: [] });
+  assert.doesNotMatch(plain, /<header class="pf-header">[\s\S]*?<span>Khing Jay Regala<\/span>[\s\S]*?<\/header>/, 'the logo stands alone by default');
+  assert.match(plain, /<header class="pf-header"><div class="pf-container pf-header-inner"><a class="pf-identity" href="#pf-top" aria-label="Back to top"><span class="pf-mark/);
+  assert.match(plain, /<h1>Khing Jay Regala<\/h1>/, 'the page still shows the display name');
+  const branded = renderer.renderPortfolio({ profile: { name: 'Khing Jay Regala', brand: 'KJ Studio' }, works: [] });
+  assert.match(branded, /<header class="pf-header">[\s\S]*?<span>KJ Studio<\/span>/);
+  assert.match(branded, /<h1>Khing Jay Regala<\/h1>/);
+});
+
+test('Bento builds its hero from tiles and Gallery keeps every work in one masonry wall', () => {
+  const input = { profile: { name: 'Ana Cruz', role: 'Designer', avatar: '/assets/images/ana.webp', location: 'Cebu', skills: ['Figma', 'Motion'], email: 'ana@example.com' }, works: [{ id: 'w', title: 'Reel', image: '/assets/images/reel.webp', visible: true }] };
+  const bento = renderer.renderPortfolio({ ...input, style: { layout: 'bento' } });
+  for (const tile of ['intro', 'photo', 'facts', 'contact', 'skills', 'latest']) assert.match(bento, new RegExp(`pf-tile pf-tile-${tile}`));
+  assert.equal((bento.match(/<h1>/g) ?? []).length, 1);
+  assert.match(bento, /pf-tile pf-tile-contact" href="mailto:ana@example.com"/);
+  assert.match(bento, /<strong>1<\/strong>project/);
+  const gallery = renderer.renderPortfolio({ ...input, style: { layout: 'gallery' } });
+  assert.match(gallery, /pf-site pf-gallery/);
+  assert.match(gallery, /<figure class="pf-hero-figure"><img class="pf-portrait-image" src="\/assets\/images\/ana\.webp"/);
+  assert.match(gallery, /data-pf-work="w"/);
+  assert.equal(renderer.templates.bento.name, 'Bento');
+  assert.equal(renderer.templates.gallery.name, 'Gallery');
+});

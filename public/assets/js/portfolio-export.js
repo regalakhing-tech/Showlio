@@ -2,11 +2,11 @@ import { normalizePortfolio, visibleWorks } from './portfolio-model.js';
 import { escapeHtml, renderPortfolio, renderWorkDetail } from './portfolio-render.js';
 
 const cssPath = '/assets/css/portfolio-public.css';
-const fontPath = '/assets/fonts/inter-latin.woff2';
 const localRaster = /^\/assets\/(?:[a-z0-9_~-][a-z0-9._~-]*\/)*[a-z0-9_~-][a-z0-9._~-]*\.(png|jpe?g|gif|webp|avif)$/i;
 // Profile photos and project photos synced from the creator's Showlio account.
 const storagePhoto = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\//i;
-const fontUrl = /url\(\s*(["']?)\/assets\/fonts\/inter-latin\.woff2\1\s*\)/gi;
+// Inter and the Editorial template's Instrument Serif, all self-hosted.
+const fontUrl = /url\(\s*(["']?)(\/assets\/fonts\/[a-z0-9-]+\.woff2)\1\s*\)/gi;
 
 // This script is constant: portfolio text only enters the JSON data element.
 const controls = `(() => {
@@ -64,13 +64,14 @@ function dataUrl(bytes, mime) {
 
 async function inlineStyles() {
   let css = await (await getAsset(cssPath)).text();
-  if (css.includes(fontPath)) {
+  for (const fontPath of new Set([...css.matchAll(fontUrl)].map(match => match[2]))) {
     try {
       const bytes = new Uint8Array(await (await getAsset(fontPath)).arrayBuffer());
       if (!bytes.length) throw new Error('Empty font');
-      css = css.replace(fontUrl, () => `url("${dataUrl(bytes, 'font/woff2')}")`);
+      const inlined = `url("${dataUrl(bytes, 'font/woff2')}")`;
+      css = css.replace(fontUrl, (match, quote, path) => path === fontPath ? inlined : match);
     } catch {
-      // Inter is optional; the compiled stylesheet already has system fallbacks.
+      // Fonts are optional; the stylesheet already has system fallbacks.
       css = css.replace(/@font-face\s*\{[^}]*\}/gi, rule => rule.includes(fontPath) ? '' : rule);
     }
   }
@@ -117,6 +118,6 @@ export async function exportPortfolio(portfolio) {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(value.profile.name || 'Creative portfolio')} — Portfolio</title><style>${styles}</style></head>
 <body class="pf-viewer"><main class="pf-viewer-main">${renderPortfolio(value)}</main>
-<dialog class="pf-dialog" id="pf-export-dialog" aria-labelledby="pf-detail-title"><button class="pf-dialog-close" type="button" data-pf-close aria-label="Close project details">×</button><div id="pf-export-detail"></div></dialog>
+<dialog class="pf-dialog pf-dialog-${value.style.layout}" id="pf-export-dialog" aria-labelledby="pf-detail-title"><button class="pf-dialog-close" type="button" data-pf-close aria-label="Close project details"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button><div id="pf-export-detail"></div></dialog>
 <script type="application/json" id="pf-export-data">${json}</script><script>${controls}</script></body></html>`;
 }

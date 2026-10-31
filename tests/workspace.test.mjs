@@ -4,6 +4,8 @@ import { createWorkspaceState, filterProjects, normalizeProfile, profileCompleti
 import { projectCard, projectCover } from '../public/assets/js/workspace-explore.js';
 import { renderNotifications, describe, dayLabel, visibleNotifications } from '../public/assets/js/workspace-notifications.js';
 import { checkSignIn, checkSignUp, cleanUsername } from '../public/assets/js/auth-model.js';
+import { renderPortfolio as renderMyPortfolio } from '../public/assets/js/workspace-library.js';
+import { createMessagesState, renderMessages, mergeThread, threadDiffers, peopleMarkup, activeLabel, isActive, shortAgo, themeStyle } from '../public/assets/js/workspace-messages.js';
 
 test('workspace restores valid local data and rejects malformed saved state', () => {
   const state = createWorkspaceState({ profile: { name: '<script>', avatar: 'javascript:alert(1)' }, following: 'invalid', bookmarks: ['missing'] });
@@ -159,4 +161,83 @@ test('signing out of one tab leaves a session that another open tab still uses',
     otherTab.close();
     sameTab.close();
   }
+});
+
+test('messages render escaped, keep ones still sending last, and notice when a conversation changed', () => {
+  const now = Date.now();
+  const bo = { id: 'u2', name: '<b>Bo</b>', username: 'bo', avatar: '' };
+  const state = { messages: { ...createMessagesState(), loaded: true, with: 'u2', threadLoaded: true, partner: bo,
+    conversations: [{ ...bo, lastMessage: '<script>x</script>', lastMine: true, lastAt: now, unread: 3 }],
+    thread: [{ id: 'm1', body: '<img src=x onerror=alert(1)>', mine: false, created: now }, { id: 'pending-1', body: 'On my way', mine: true, pending: true, created: now }] } };
+  const html = renderMessages(state);
+  assert.ok(!html.includes('<script>') && !html.includes('<img src=x') && !html.includes('<b>Bo'), 'everything people wrote is escaped');
+  assert.match(html, /You: &lt;script&gt;/);
+  assert.match(html, /aria-label="&lt;b&gt;Bo&lt;\/b&gt;, 3 unread"/);
+  assert.match(html, /Sending…/);
+  assert.match(renderMessages({ messages: createMessagesState() }), /Loading chats/);
+  assert.match(renderMessages({ messages: { ...createMessagesState(), loaded: true } }), /No chats yet[\s\S]*New message/);
+
+  const pending = { id: 'pending-1', pending: true };
+  assert.deepEqual(mergeThread([{ id: 'm1' }, { id: 'm2' }], [{ id: 'm1' }, pending]).map((message) => message.id), ['m1', 'm2', 'pending-1']);
+  assert.equal(threadDiffers([{ id: 'a' }], [{ id: 'a' }]), false);
+  assert.equal(threadDiffers([{ id: 'a' }, { id: 'b' }], [{ id: 'a' }]), true);
+  assert.equal(threadDiffers([{ id: 'b' }], [{ id: 'a' }]), true);
+  assert.match(peopleMarkup([]), /No public members/);
+  assert.match(peopleMarkup([{ id: 'u3', name: 'Cy', username: 'cy', avatar: '' }]), /data-message-to="u3"/);
+});
+
+test('messenger details: active status, grouping, seen, big emoji, filter and themes', () => {
+  const now = Date.now();
+  assert.equal(activeLabel(now - 30000, now), 'Active now');
+  assert.equal(activeLabel(now - 5 * 60000, now), 'Active 5m ago');
+  assert.equal(activeLabel(now - 3 * 3600000, now), 'Active 3h ago');
+  assert.equal(activeLabel(now - 3 * 86400000, now), '');
+  assert.equal(activeLabel(null, now), '', 'a hidden active status shows nothing');
+  assert.equal(isActive(now - 60000, now), true);
+  assert.equal(isActive(now - 5 * 60000, now), false);
+  assert.equal(shortAgo(now - 20000, now), 'now');
+  assert.equal(shortAgo(now - 42 * 60000, now), '42m');
+
+  const bo = { id: 'u2', name: 'Bo', username: 'bo', avatar: '', activeAt: now - 10000 };
+  const base = { ...createMessagesState(), loaded: true, with: 'u2', threadLoaded: true, partner: bo, details: true, theme: 'sunset',
+    conversations: [{ ...bo, lastMessage: 'hi', lastMine: false, lastAt: now, unread: 0, theme: 'sunset' }, { id: 'u3', name: 'Cy', username: 'cy', avatar: '', lastMessage: 'yo', lastMine: true, lastAt: now, unread: 0 }],
+    thread: [
+      { id: 'a', body: 'Hey', mine: false, created: now - 60000 },
+      { id: 'b', body: 'Are you there?', mine: false, created: now - 50000 },
+      { id: 'c', body: '👍', mine: true, created: now - 40000 },
+    ] };
+  const unseen = renderMessages({ messages: { ...base, partnerReadAt: now - 45000 }, preferences: { showActiveStatus: true } });
+  assert.match(unseen, /Sent/);
+  assert.doesNotMatch(unseen, /Seen/);
+  assert.match(renderMessages({ messages: { ...base, partnerReadAt: now - 40000 }, preferences: {} }), /is-seen[\s\S]*Seen/);
+  assert.match(unseen, /data-message-id="a"/);
+  assert.match(unseen, /class="ws-msg  is-first  [^"]*" data-message-id="a"/, 'Bo’s first message starts the group');
+  assert.match(unseen, /class="ws-msg   is-last [^"]*" data-message-id="b"/, 'and his quick second one ends it');
+  assert.match(unseen, /class="ws-msg is-mine is-first is-last is-emoji/, 'a lone emoji is shown large');
+  assert.match(unseen, /ws-msg-face  is-active/, 'Bo shows as active');
+  assert.match(unseen, /Active now/);
+  assert.match(unseen, /role="radio" aria-checked="true" data-chat-theme="sunset"/);
+  assert.ok(unseen.includes(`style="${themeStyle('sunset')}"`));
+  assert.equal(themeStyle('<script>'), themeStyle('showlio'), 'unknown themes fall back to Showlio');
+  assert.match(unseen, /role="switch" class="ws-msg-switch" aria-checked="true"/);
+  const filtered = renderMessages({ messages: { ...base, filter: 'cy' }, preferences: {} });
+  assert.match(filtered, /data-conversation="u3"/);
+  assert.doesNotMatch(filtered, /data-conversation="u2"/);
+});
+
+test('My portfolio: real projects get icon-only edit and delete, sample ones do not', () => {
+  const state = createWorkspaceState();
+  state.profile = { ...state.profile, username: 'ana', visible: true };
+  state.projects = [
+    { id: 'p1', title: 'Reel <1>', description: 'x', image: '/assets/images/workspace-content.webp', images: [], categories: ['Video'], tools: [], creator: 'self', owner: true, real: true, views: 3, likes: 2, comments: 1, created: Date.now() - 3600000 },
+    { id: 'local-1', title: 'Sample', description: 'x', image: '/assets/images/workspace-content.webp', categories: ['Design'], creator: 'self', owner: true, real: false, views: 0, likes: 0, comments: 0, created: 0 },
+  ];
+  const html = renderMyPortfolio(state);
+  assert.match(html, /data-edit-project="p1" aria-label="Edit Reel &lt;1&gt;"/);
+  assert.match(html, /data-delete-project="p1"/);
+  assert.doesNotMatch(html, /data-edit-project="local-1"|data-delete-project="local-1"/);
+  assert.match(html, /href="[^"]*\/portfolio\/view\/\?u=ana"/, 'a link to the live portfolio page');
+  assert.match(html, /<strong>2<\/strong><span>projects<\/span>/);
+  assert.match(html, /class="ws-mine-add" data-action="share"/);
+  assert.doesNotMatch(html, /confirm\(/);
 });

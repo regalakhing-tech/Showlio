@@ -19,11 +19,13 @@ $routes = [
     '/api/auth/forgot' => ['POST' => fn () => auth_forgot($supabase, $mail)],
     '/api/auth/reset' => ['POST' => fn () => auth_reset($supabase)],
     '/api/auth/sign-out' => ['POST' => fn () => auth_sign_out($supabase)],
+    '/api/auth/password' => ['POST' => fn () => auth_change_password($supabase)],
     '/api/profile' => ['GET' => fn () => profile_show($supabase), 'PUT' => fn () => profile_save($supabase)],
     '/api/profile/preferences' => ['PATCH' => fn () => profile_preferences($supabase)],
     '/api/feed' => ['GET' => fn () => feed_show($supabase)],
     '/api/portfolio' => ['GET' => fn () => portfolio_show($supabase)],
-    '/api/projects' => ['POST' => fn () => project_create($supabase), 'DELETE' => fn () => project_delete($supabase)],
+    '/api/portfolio/template' => ['PATCH' => fn () => portfolio_template_save($supabase)],
+    '/api/projects' => ['POST' => fn () => project_create($supabase), 'PATCH' => fn () => project_update($supabase), 'DELETE' => fn () => project_delete($supabase)],
     '/api/projects/media' => ['POST' => fn () => project_media_add($supabase)],
     '/api/projects/comments' => ['GET' => fn () => comments_show($supabase), 'POST' => fn () => comment_add($supabase), 'DELETE' => fn () => comment_delete($supabase)],
     '/api/notifications' => ['GET' => fn () => notifications_show($supabase), 'PATCH' => fn () => notifications_update($supabase), 'DELETE' => fn () => notifications_delete($supabase)],
@@ -31,6 +33,10 @@ $routes = [
     '/api/projects/save' => ['POST' => fn () => community_toggle($supabase, 'toggle_bookmark', 'project')],
     '/api/projects/view' => ['POST' => fn () => project_view($supabase)],
     '/api/creators/follow' => ['POST' => fn () => community_toggle($supabase, 'toggle_follow', 'creator')],
+    '/api/messages' => ['GET' => fn () => messages_list($supabase), 'POST' => fn () => messages_send($supabase)],
+    '/api/messages/thread' => ['GET' => fn () => messages_thread($supabase)],
+    '/api/messages/people' => ['GET' => fn () => messages_people($supabase)],
+    '/api/messages/theme' => ['PATCH' => fn () => messages_theme($supabase)],
 ];
 
 $route = $routes[$path] ?? null;

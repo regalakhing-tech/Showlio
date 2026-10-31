@@ -6,7 +6,8 @@ declare(strict_types=1);
 // database call (my_profile, save_my_profile, set_my_preferences) made with the
 // creator's own access token, so Row Level Security decides what may change.
 
-const PREFERENCE_KEYS = ['showAvailability', 'communityDiscovery', 'projectNotifications', 'messageNotifications', 'communityNotifications', 'productNotifications'];
+// profileCompleted only ever turns on: the database ignores false (once per account).
+const PREFERENCE_KEYS = ['showAvailability', 'communityDiscovery', 'projectNotifications', 'messageNotifications', 'communityNotifications', 'productNotifications', 'profileCompleted', 'showActiveStatus'];
 
 /**
  * Claims of the creator's access token, read without checking the signature. Only used to

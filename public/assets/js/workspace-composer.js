@@ -1,6 +1,6 @@
 // "Add a project": details, drag-and-drop photos with thumbnails, a preview of the finished
 // project, then publishing. The project is created first and each photo uploads on its own,
-// so no single request carries every photo.
+// so no single request carries every photo. Given a project, the same dialog edits it.
 import { icon, esc, avatar, resizeImage } from './workspace-shared.js';
 import { disciplines, disciplineById } from './workspace-data.js';
 
@@ -58,11 +58,15 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, reducedMotion
 /** The success mark: a disc and ring that draw in, a tick, and a short burst around it. */
 export const successMark = () => `<span class="ws-success-mark" aria-hidden="true"><span class="ws-success-burst">${Array.from({ length: 8 }, (_, index) => `<i style="--r:${index * 45}deg"></i>`).join('')}</span><svg viewBox="0 0 64 64"><circle class="ws-success-disc" cx="32" cy="32" r="28"/><circle class="ws-success-ring" cx="32" cy="32" r="28"/><path class="ws-success-tick" d="M20.5 33.5l7.5 7.5 15.5-17"/></svg></span>`;
 
-export function openProjectComposer({ state, openModal, api, errorOf, onPublished, onView, onDone }) {
-  const photos = []; // { id, url } once ready, { id, pending: true } while shrinking
+export function openProjectComposer({ state, openModal, api, errorOf, onPublished, onView, onDone, project = null }) {
+  const editing = Boolean(project);
+  // { id, url } once ready, { id, pending: true } while shrinking; photos already saved also carry their path.
+  const photos = editing ? (project.media ?? []).map((item) => ({ id: crypto.randomUUID(), url: item.url, path: item.path })) : [];
+  const title = editing ? 'Edit project' : 'Add a project';
+  const startCategory = disciplines.some((item) => item.id === project?.categories?.[0]) ? project.categories[0] : disciplines[0].id;
   let busy = false;
   let dragged = null;
-  const content = openModal('Add a project', `<form class="ws-composer" data-composer novalidate><p class="ws-composer-intro">Share a piece of your work. Add photos, tell the story, then preview it before you publish.</p><div class="ws-composer-grid"><section class="ws-composer-media" aria-labelledby="ws-composer-photos" data-drop><div class="ws-composer-head"><h3 id="ws-composer-photos">Photos</h3><span data-photo-count></span></div><label class="ws-dropzone"><input type="file" class="ws-sr" accept="${ACCEPTED.join(',')}" multiple data-photo-input><span class="ws-dropzone-icon">${icon('camera')}</span><strong>Drag photos here</strong><span>or <b>browse your files</b></span><small>JPG, PNG or WebP · up to ${MAX_PHOTOS} photos · 10 MB each</small></label><ul class="ws-photo-grid" data-photo-grid></ul><p class="ws-composer-hint" data-photo-hint>The first photo is your cover. Tap the star on another photo to make it the cover${matchMedia('(pointer: fine)').matches ? ', or drag photos to reorder them' : ''}.</p></section><section class="ws-composer-details" aria-label="Project details"><label class="ws-composer-field"><span>Project title <small data-count="title">0/80</small></span><input name="title" maxlength="80" placeholder="What have you been creating?" autocomplete="off"></label><label class="ws-composer-field"><span>Description <small data-count="description">0/300</small></span><textarea name="description" maxlength="300" rows="5" placeholder="Tell people about the idea, your role and the result."></textarea></label><fieldset class="ws-composer-field"><legend>Discipline</legend><div class="ws-discipline-picks">${disciplines.map((item, index) => `<label class="ws-discipline-pick" style="--disc:${item.color};--disc-tint:${item.tint}"><input type="radio" name="category" value="${esc(item.id)}" ${index === 0 ? 'checked' : ''}><span>${icon(item.icon)}${esc(item.id)}</span></label>`).join('')}</div></fieldset><label class="ws-composer-field"><span>Tools or skills <small>Optional · separate with commas</small></span><input name="tools" maxlength="400" placeholder="Figma, After Effects, Python" autocomplete="off"></label></section></div>${state.profile.visible ? '' : '<label class="ws-composer-public"><input type="checkbox" name="makePublic" checked><span><strong>Show this project to everyone</strong><small>Your profile is private right now, so only you would see it. This makes your profile public; you can change it any time in Settings.</small></span></label>'}<p class="ws-settings-error ws-composer-error" data-composer-error role="alert" hidden></p><footer class="ws-composer-footer"><span class="ws-composer-status" data-composer-status aria-live="polite"></span><button type="button" class="ws-btn ws-outline" data-composer-preview>${icon('eye')}Preview</button><button type="submit" class="ws-btn ws-primary" data-composer-publish>${icon('check')}<span>Publish project</span></button></footer></form><div class="ws-composer-preview" data-preview hidden></div><div class="ws-publish" data-publishing hidden></div>`, { wide: true });
+  const content = openModal(title, `<form class="ws-composer" data-composer novalidate><p class="ws-composer-intro">${editing ? 'Change the photos or the story. Everyone sees your changes as soon as you save.' : 'Share a piece of your work. Add photos, tell the story, then preview it before you publish.'}</p><div class="ws-composer-grid"><section class="ws-composer-media" aria-labelledby="ws-composer-photos" data-drop><div class="ws-composer-head"><h3 id="ws-composer-photos">Photos</h3><span data-photo-count></span></div><label class="ws-dropzone"><input type="file" class="ws-sr" accept="${ACCEPTED.join(',')}" multiple data-photo-input><span class="ws-dropzone-icon">${icon('camera')}</span><strong>Drag photos here</strong><span>or <b>browse your files</b></span><small>JPG, PNG or WebP · up to ${MAX_PHOTOS} photos · 10 MB each</small></label><ul class="ws-photo-grid" data-photo-grid></ul><p class="ws-composer-hint" data-photo-hint>The first photo is your cover. Tap the star on another photo to make it the cover${matchMedia('(pointer: fine)').matches ? ', or drag photos to reorder them' : ''}.</p></section><section class="ws-composer-details" aria-label="Project details"><label class="ws-composer-field"><span>Project title <small data-count="title">${(project?.title ?? '').length}/80</small></span><input name="title" maxlength="80" placeholder="What have you been creating?" autocomplete="off" value="${esc(project?.title ?? '')}"></label><label class="ws-composer-field"><span>Description <small data-count="description">${(project?.description ?? '').length}/300</small></span><textarea name="description" maxlength="300" rows="5" placeholder="Tell people about the idea, your role and the result.">${esc(project?.description ?? '')}</textarea></label><fieldset class="ws-composer-field"><legend>Discipline</legend><div class="ws-discipline-picks">${disciplines.map((item, index) => `<label class="ws-discipline-pick" style="--disc:${item.color};--disc-tint:${item.tint}"><input type="radio" name="category" value="${esc(item.id)}" ${item.id === startCategory ? 'checked' : ''}><span>${icon(item.icon)}${esc(item.id)}</span></label>`).join('')}</div></fieldset><label class="ws-composer-field"><span>Tools or skills <small>Optional · separate with commas</small></span><input name="tools" maxlength="400" placeholder="Figma, After Effects, Python" autocomplete="off" value="${esc((project?.tools ?? []).join(', '))}"></label></section></div>${state.profile.visible || editing ? '' : '<label class="ws-composer-public"><input type="checkbox" name="makePublic" checked><span><strong>Show this project to everyone</strong><small>Your profile is private right now, so only you would see it. This makes your profile public; you can change it any time in Settings.</small></span></label>'}<p class="ws-settings-error ws-composer-error" data-composer-error role="alert" hidden></p><footer class="ws-composer-footer"><span class="ws-composer-status" data-composer-status aria-live="polite"></span><button type="button" class="ws-btn ws-outline" data-composer-preview>${icon('eye')}Preview</button><button type="submit" class="ws-btn ws-primary" data-composer-publish>${icon('check')}<span>${editing ? 'Save changes' : 'Publish project'}</span></button></footer></form><div class="ws-composer-preview" data-preview hidden></div><div class="ws-publish" data-publishing hidden></div>`, { wide: true });
   if (!content) return;
   const form = content.querySelector('[data-composer]');
   const preview = content.querySelector('[data-preview]');
@@ -126,7 +130,7 @@ export function openProjectComposer({ state, openModal, api, errorOf, onPublishe
     const ready = photos.filter((photo) => photo.url).map((photo) => photo.url);
     const discipline = disciplineById(values.category);
     heading.textContent = 'Preview';
-    preview.innerHTML = `<p class="ws-composer-intro">This is how your project will look to people on Showlio.</p>${galleryMarkup(ready, values.title || 'Your project')}${photos.some((photo) => photo.pending) ? '<p class="ws-composer-hint">Some photos are still being prepared; they’ll appear here in a moment.</p>' : ready.length ? '' : '<p class="ws-composer-hint">No photos yet: your project will use a placeholder cover.</p>'}<div class="ws-preview-body"><h3 class="ws-preview-title">${esc(values.title || 'Untitled project')}</h3><div class="ws-modal-person">${avatar(state.profile)}<div><h3>${esc(state.profile.name)}</h3><p>${esc(state.profile.headline || `@${state.profile.username}`)}</p></div></div><p class="ws-preview-description">${esc(values.description || 'Your description will appear here.')}</p><div class="ws-pills"><span class="ws-pill ws-disc-pill" style="--disc:${discipline?.color};--disc-tint:${discipline?.tint}">${icon(discipline?.icon ?? 'tag')}${esc(values.category)}</span>${values.tools.map((tool) => `<span class="ws-pill ws-tool-pill">${esc(tool)}</span>`).join('')}</div></div><footer class="ws-composer-footer"><span class="ws-composer-status"></span><button type="button" class="ws-btn ws-outline" data-preview-back>${icon('arrow-left')}Keep editing</button><button type="button" class="ws-btn ws-primary" data-preview-publish>${icon('check')}Publish project</button></footer>`;
+    preview.innerHTML = `<p class="ws-composer-intro">This is how your project will look to people on Showlio.</p>${galleryMarkup(ready, values.title || 'Your project')}${photos.some((photo) => photo.pending) ? '<p class="ws-composer-hint">Some photos are still being prepared; they’ll appear here in a moment.</p>' : ready.length ? '' : '<p class="ws-composer-hint">No photos yet: your project will use a placeholder cover.</p>'}<div class="ws-preview-body"><h3 class="ws-preview-title">${esc(values.title || 'Untitled project')}</h3><div class="ws-modal-person">${avatar(state.profile)}<div><h3>${esc(state.profile.name)}</h3><p>${esc(state.profile.headline || `@${state.profile.username}`)}</p></div></div><p class="ws-preview-description">${esc(values.description || 'Your description will appear here.')}</p><div class="ws-pills"><span class="ws-pill ws-disc-pill" style="--disc:${discipline?.color};--disc-tint:${discipline?.tint}">${icon(discipline?.icon ?? 'tag')}${esc(values.category)}</span>${values.tools.map((tool) => `<span class="ws-pill ws-tool-pill">${esc(tool)}</span>`).join('')}</div></div><footer class="ws-composer-footer"><span class="ws-composer-status"></span><button type="button" class="ws-btn ws-outline" data-preview-back>${icon('arrow-left')}Keep editing</button><button type="button" class="ws-btn ws-primary" data-preview-publish>${icon('check')}${editing ? 'Save changes' : 'Publish project'}</button></footer>`;
     bindGallery(preview, ready.length ? ready : [PLACEHOLDER], values.title || 'Your project');
     form.hidden = true;
     preview.hidden = false;
@@ -134,7 +138,7 @@ export function openProjectComposer({ state, openModal, api, errorOf, onPublishe
     preview.querySelector('[data-preview-back]').focus({ preventScroll: true });
   };
   const showForm = () => {
-    heading.textContent = 'Add a project';
+    heading.textContent = title;
     preview.hidden = true;
     form.hidden = false;
     form.querySelector('[data-composer-preview]').focus({ preventScroll: true });
@@ -143,11 +147,11 @@ export function openProjectComposer({ state, openModal, api, errorOf, onPublishe
   // Publishing takes over the dialog: the cover, a progress bar and each photo's state,
   // then a success screen with the animated check.
   const showProgress = (values, ready) => {
-    heading.textContent = 'Publishing your project';
+    heading.textContent = editing ? 'Saving your changes' : 'Publishing your project';
     form.hidden = true;
     preview.hidden = true;
     stage.hidden = false;
-    stage.innerHTML = `<div class="ws-publish-cover"><img src="${esc(ready[0] ?? PLACEHOLDER)}" alt=""><span class="ws-publish-shine" aria-hidden="true"></span></div><p class="ws-publish-name">${esc(values.title)}</p><p class="ws-publish-step" data-publish-step role="status">Creating your project…</p><div class="ws-publish-bar" role="progressbar" aria-label="Publishing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-publish-fill></span></div>${ready.length ? `<ul class="ws-publish-photos">${ready.map((src, index) => `<li class="is-waiting" data-publish-photo="${index}"><img src="${esc(src)}" alt="Photo ${index + 1}"><span class="ws-publish-state" aria-hidden="true"></span></li>`).join('')}</ul>` : ''}`;
+    stage.innerHTML = `<div class="ws-publish-cover"><img src="${esc(ready[0] ?? PLACEHOLDER)}" alt=""><span class="ws-publish-shine" aria-hidden="true"></span></div><p class="ws-publish-name">${esc(values.title)}</p><p class="ws-publish-step" data-publish-step role="status">${editing ? 'Saving your changes…' : 'Creating your project…'}</p><div class="ws-publish-bar" role="progressbar" aria-label="Publishing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-publish-fill></span></div>${ready.length ? `<ul class="ws-publish-photos">${ready.map((src, index) => `<li class="is-waiting" data-publish-photo="${index}"><img src="${esc(src)}" alt="Photo ${index + 1}"><span class="ws-publish-state" aria-hidden="true"></span></li>`).join('')}</ul>` : ''}`;
     dialog.scrollTop = 0;
   };
   const setProgress = (done, total, text) => {
@@ -169,6 +173,49 @@ export function openProjectComposer({ state, openModal, api, errorOf, onPublishe
     stage.querySelector('[data-publish-done]').addEventListener('click', () => onDone());
   };
 
+  // Editing: the details and the photos that stay go in one request, then new photos upload one by one.
+  const saveChanges = async (values) => {
+    busy = true;
+    say('');
+    const ready = photos.map((photo) => photo.url);
+    const fresh = photos.map((photo, index) => ({ photo, index })).filter(({ photo }) => !photo.path);
+    const total = 1 + fresh.length;
+    showProgress(values, ready);
+    const keep = photos.flatMap((photo, position) => (photo.path ? [{ path: photo.path, position }] : []));
+    const [{ ok, data }] = await Promise.all([api('projects', 'PATCH', { ...values, id: project.id, keep }), pause(500)]);
+    if (!ok) {
+      busy = false;
+      stage.hidden = true;
+      showForm();
+      say(errorOf(data));
+      return;
+    }
+    photos.forEach((photo, index) => { if (photo.path) markPhoto(index, 'done'); });
+    let done = 0;
+    const step = () => (fresh.length ? `Uploading new photos ${done} of ${fresh.length}…` : 'Finishing up…');
+    setProgress(1, total, step());
+    const uploaded = [];
+    await inBatches(fresh, 3, async ({ photo, index }) => {
+      markPhoto(index, 'uploading');
+      const reply = await api('projects/media', 'POST', { project: project.id, image: photo.url, position: index });
+      if (reply.ok) uploaded[index] = { url: photo.url, path: reply.data.path };
+      markPhoto(index, reply.ok ? 'done' : 'failed');
+      done += 1;
+      setProgress(1 + done, total, step());
+    });
+    setProgress(total, total, 'All done!');
+    const media = photos.flatMap((photo, index) => (photo.path ? [{ path: photo.path, url: photo.url }] : uploaded[index] ? [uploaded[index]] : []));
+    const updated = { ...project, title: values.title, description: values.description, categories: [values.category], tools: values.tools, media, images: media.map((item) => item.url), image: media[0]?.url ?? PLACEHOLDER };
+    onPublished(updated);
+    await pause(450);
+    const failed = fresh.length - uploaded.filter(Boolean).length;
+    heading.textContent = 'Changes saved';
+    stage.innerHTML = `<div class="ws-publish-done">${successMark()}<h3 class="ws-publish-heading">Changes saved</h3><p class="ws-publish-message">“${esc(updated.title)}” is up to date everywhere.</p>${failed ? `<p class="ws-publish-warning">${failed} new ${failed === 1 ? 'photo' : 'photos'} didn’t upload. Edit the project to try again.</p>` : ''}<div class="ws-publish-actions"><button type="button" class="ws-btn ws-outline" data-publish-view>${icon('eye')}View project</button><button type="button" class="ws-btn ws-primary" data-publish-done>${icon('check')}Done</button></div></div>`;
+    stage.querySelector('[data-publish-done]').focus({ preventScroll: true });
+    stage.querySelector('[data-publish-view]').addEventListener('click', () => onView(updated.id));
+    stage.querySelector('[data-publish-done]').addEventListener('click', () => onDone());
+  };
+
   const publish = async () => {
     if (busy) return;
     if (!preview.hidden) showForm();
@@ -176,7 +223,8 @@ export function openProjectComposer({ state, openModal, api, errorOf, onPublishe
     const errors = checkProject(values);
     const first = Object.keys(errors)[0];
     if (first) { say(errors[first]); form.elements[first].focus(); return; }
-    if (photos.some((photo) => photo.pending)) { say('Your photos are still being prepared. Publish again in a moment.'); return; }
+    if (photos.some((photo) => photo.pending)) { say(`Your photos are still being prepared. ${editing ? 'Save' : 'Publish'} again in a moment.`); return; }
+    if (editing) { await saveChanges(values); return; }
     busy = true;
     say('');
     const ready = photos.map((photo) => photo.url);

@@ -31,7 +31,7 @@ test('serves the independent portfolio builder and viewer without changing exist
     assert.equal(bare.status, 308, path);
     assert.equal(bare.headers.get('location'), path);
   }
-  for (const path of ['/assets/css/portfolio.css', '/assets/css/portfolio-public.css', '/assets/js/portfolio-builder.js', '/assets/js/portfolio-editor.js', '/assets/js/portfolio-model.js', '/assets/js/portfolio-store.js', '/assets/js/portfolio-view.js', '/assets/js/portfolio-render.js', '/assets/js/portfolio-qr.js', '/assets/vendor/qrcode.js']) {
+  for (const path of ['/assets/css/portfolio.css', '/assets/css/portfolio-public.css', '/assets/js/portfolio-builder.js', '/assets/js/portfolio-editor.js', '/assets/js/portfolio-model.js', '/assets/js/portfolio-store.js', '/assets/js/portfolio-view.js', '/assets/js/portfolio-render.js', '/assets/js/portfolio-qr.js', '/assets/vendor/qrcode.js', '/assets/vendor/sweetalert2.js', '/assets/vendor/confetti.js']) {
     const response = await fetch(`${origin}${path}`);
     assert.equal(response.status, 200, path);
     if (path.endsWith('.js')) assert.match(response.headers.get('content-type'), /javascript/, path);

@@ -36,7 +36,8 @@ function signed_in(array $session, bool $remember): never
 function auth_failure(int $status, mixed $body): never
 {
     if ($status === 0) {
-        json_response(['error' => 'Showlio can’t reach the sign-in service right now. Try again in a moment.'], 503);
+        // Every Supabase call (profile saves too) lands here, so don't blame sign-in.
+        json_response(['error' => 'Showlio can’t reach its server right now. Check your internet connection and try again.'], 503);
     }
     if ($status === 429) {
         json_response(['error' => 'Too many requests. Wait a minute and try again.'], 429);
@@ -306,6 +307,48 @@ function auth_reset(array $supabase): never
         invalid_input(['password' => 'Choose a stronger password, then send a new code and try again.']);
     }
     auth_failure($status, $body);
+}
+
+/**
+ * Settings > Account: checks the current password, then sets the new one. The signed-in
+ * session stays; the extra session the password check creates is ended right away.
+ * @param array{url: string, publishable_key: string, secret_key: string} $supabase
+ */
+function auth_change_password(array $supabase): never
+{
+    $session = current_session($supabase);
+    if ($session === null) {
+        json_response(['error' => 'Sign in to continue.'], 401);
+    }
+    [$values, $errors] = validate_password_change(read_json_body());
+    if ($errors !== []) {
+        invalid_input($errors);
+    }
+    $userKey = attempt_key('password', (string) ($session['user']['id'] ?? ''));
+    rate_limit($supabase, [attempt_key('password', client_ip()) => 100, $userKey => 5], 900);
+
+    [$status, $check] = auth_request($supabase, 'POST', '/auth/v1/token?grant_type=password', [
+        'email' => (string) ($session['user']['email'] ?? ''),
+        'password' => $values['current'],
+    ]);
+    if ($status !== 200 || !is_session($check)) {
+        if (supabase_error_code($check) === 'invalid_credentials') {
+            invalid_input(['current' => 'Your current password is incorrect.']);
+        }
+        auth_failure($status, $check);
+    }
+    auth_request($supabase, 'POST', '/auth/v1/logout?scope=local', null, $check['access_token']);
+    rate_limit_clear($supabase, [$userKey]);
+
+    [$status, $body] = auth_request($supabase, 'PUT', '/auth/v1/user', ['password' => $values['password']], $session['access_token']);
+    if ($status === 200) {
+        json_response(['changed' => true]);
+    }
+    match (supabase_error_code($body)) {
+        'weak_password' => invalid_input(['password' => 'Choose a stronger password. Mix letters, numbers and symbols.']),
+        'same_password' => invalid_input(['password' => 'Choose a password different from your current one.']),
+        default => auth_failure($status, $body),
+    };
 }
 
 /** @param array{url: string, publishable_key: string, secret_key: string} $supabase */

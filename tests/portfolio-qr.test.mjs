@@ -35,3 +35,47 @@ test('QR title is escaped and invalid empty or oversized payloads fail clearly',
   assert.throws(() => qr.createQrSvg(''), /empty/i);
   assert.throws(() => qr.createQrSvg('a'.repeat(10000)), /long/i);
 });
+
+// Rasterize the styled QR exactly as drawn: round dots, and eyes made of a rounded square,
+// a white ring and a centre dot.
+function decodeDots(svg) {
+  const size = Number(/viewBox="0 0 (\d+) \d+"/.exec(svg)?.[1]);
+  const scale = 8;
+  const width = size * scale;
+  const pixels = new Uint8ClampedArray(width * width * 4).fill(255);
+  const paint = (inside, dark) => {
+    for (let py = 0; py < width; py++) for (let px = 0; px < width; px++) {
+      if (!inside((px + 0.5) / scale, (py + 0.5) / scale)) continue;
+      const offset = (py * width + px) * 4;
+      pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = dark ? 0 : 255;
+    }
+  };
+  const dots = [...svg.matchAll(/<circle cx="([\d.]+)" cy="([\d.]+)" r="\.48"\/>/g)].map(([, x, y]) => [Number(x), Number(y)]);
+  assert.ok(dots.length > 100, 'data modules are dots');
+  const grid = new Map(dots.map(([x, y]) => [`${Math.floor(x)},${Math.floor(y)}`, true]));
+  paint((x, y) => grid.has(`${Math.floor(x)},${Math.floor(y)}`) && (x % 1 - .5) ** 2 + (y % 1 - .5) ** 2 <= .48 ** 2, true);
+  const eyes = [...svg.matchAll(/<rect x="(\d+)" y="(\d+)" width="7" height="7" rx="2.3"\/>/g)].map(([, x, y]) => [Number(x), Number(y)]);
+  assert.equal(eyes.length, 3, 'three rounded eyes');
+  const rounded = (left, top, side, radius) => (x, y) => {
+    if (x < left || y < top || x > left + side || y > top + side) return false;
+    const nx = Math.min(Math.max(x, left + radius), left + side - radius);
+    const ny = Math.min(Math.max(y, top + radius), top + side - radius);
+    return (x - nx) ** 2 + (y - ny) ** 2 <= radius ** 2;
+  };
+  for (const [left, top] of eyes) {
+    const cx = left + 3.5;
+    const cy = top + 3.5;
+    paint(rounded(left, top, 7, 2.3), true);
+    paint((x, y) => (x - cx) ** 2 + (y - cy) ** 2 <= 2.6 ** 2, false);
+    paint((x, y) => (x - cx) ** 2 + (y - cy) ** 2 <= 1.6 ** 2, true);
+  }
+  return jsQR(pixels, width, width)?.data;
+}
+
+test('the dotted QR with rounded eyes still scans to the exact link', () => {
+  for (const value of ['https://showlio-seven.vercel.app/portfolio/view/?u=khingjay', 'http://127.0.0.1:8000/portfolio/view/?u=ana_cruz']) {
+    const svg = qr.createQrSvg(value, { style: 'dots' });
+    assert.doesNotMatch(svg, /width="1" height="1"/, 'no square modules');
+    assert.equal(decodeDots(svg), value);
+  }
+});

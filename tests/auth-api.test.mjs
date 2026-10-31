@@ -84,7 +84,7 @@ function fakeSupabase(request, body) {
   if (route === 'POST /rest/v1/rpc/creator_portfolio') {
     if (bearer && !creator) return [401, { code: 'PGRST301', message: 'JWT expired' }];
     return [200, body.handle !== 'bo_lim' ? null : {
-      profile: { id: OTHER_CREATOR, username: 'bo_lim', name: 'Bo Lim', headline: 'Colorist', bio: 'I grade films.', location: 'Cebu', avatarPath: null, availability: null, visible: true, own: false, joinedAt: '2026-10-01T00:00:00+00:00' },
+      profile: { id: OTHER_CREATOR, username: 'bo_lim', name: 'Bo Lim', headline: 'Colorist', bio: 'I grade films.', location: 'Cebu', avatarPath: null, availability: null, visible: true, own: false, joinedAt: '2026-10-01T00:00:00+00:00', template: 'minimal' },
       skills: ['DaVinci Resolve'], links: [{ kind: 'website', url: 'https://bo.example.com' }], followers: 4,
       projects: [{ id: OTHER_PROJECT, title: 'Bot', summary: 'Sorts mail.', likes: 5, views: 40, comments: 2, shownAt: '2026-10-29T08:00:00+00:00', categories: [], tools: ['Python'], mediaPaths: [`${OTHER_CREATOR}/${OTHER_PROJECT}/a.webp`] }],
     }];
@@ -116,6 +116,21 @@ function fakeSupabase(request, body) {
     return [200, account({ previousAvatarPath: 'avatarPath' in body.profile ? 'u1/old.png' : null })];
   }
   if (route === 'POST /rest/v1/rpc/set_my_preferences') return [200, account()];
+  const bo = { id: OTHER_CREATOR, username: 'bo', name: 'Bo Lim', avatarPath: `${OTHER_CREATOR}/me.webp` };
+  if (route === 'POST /rest/v1/rpc/my_conversations') return [200, [{ ...bo, activeAt: null, theme: 'rose', lastMessage: 'See you!', lastMine: false, lastAt: '2026-10-31T03:00:00+00:00', unread: 2 }]];
+  if (route === 'POST /rest/v1/rpc/conversation_messages') {
+    if (body.other !== OTHER_CREATOR) return [400, { code: 'P0002', message: 'That member isn’t available.' }];
+    return [200, { partner: { ...bo, headline: 'Automations', location: 'Cebu', activeAt: '2026-10-31T03:05:00+00:00' }, theme: 'sunset', partnerReadAt: '2026-10-31T03:00:00.250+00:00', messages: [{ id: 'e0000000-0000-4000-8000-000000000001', body: 'See you!', mine: false, createdAt: '2026-10-31T03:00:00.250+00:00' }] }];
+  }
+  if (route === 'POST /rest/v1/rpc/send_message') {
+    if (body.body === 'too fast') return [429, { code: 'PT429', message: 'You’re saving very quickly. Try again in 3 minutes.' }];
+    if (body.recipient !== OTHER_CREATOR) return [400, { code: 'P0002', message: 'That member isn’t available.' }];
+    return [200, { id: 'e0000000-0000-4000-8000-000000000002', body: body.body, mine: true, createdAt: '2026-10-31T03:01:00+00:00' }];
+  }
+  if (route === 'POST /rest/v1/rpc/set_conversation_theme') return body.other === OTHER_CREATOR ? [200, { theme: body.choice }] : [400, { code: 'P0002', message: 'Send a message first, then choose a theme.' }];
+  if (route === 'POST /rest/v1/rpc/set_my_portfolio_template') return creator ? [200, { template: body.choice }] : [401, { code: 'PGRST301' }];
+  if (route === 'POST /rest/v1/rpc/update_my_project') return body.project === OWN_PROJECT ? [200, { id: body.project, removed: [`u1/${OWN_PROJECT}/old.webp`] }] : [400, { code: 'P0002', message: 'Project not found.' }];
+  if (route === 'POST /rest/v1/rpc/find_members') return [200, body.query === 'bo' ? [{ ...bo, headline: 'Automations' }] : []];
   if (method === 'POST' && url.startsWith('/storage/v1/object/avatars/u1/')) return [200, { Key: url.slice(18) }];
   if (method === 'DELETE' && url.startsWith('/storage/v1/object/avatars/')) return [200, [{}]];
   if (['POST /auth/v1/logout?scope=local', 'POST /auth/v1/recover', 'POST /auth/v1/resend'].includes(route)) return route.includes('logout') ? [204] : [200, {}];
@@ -367,6 +382,41 @@ test('sign-out ends the Supabase session and clears both cookies', async () => {
   assert.match(cookie(response, 'showlio_refresh'), /^showlio_refresh=deleted;.*path=\/api;/);
 });
 
+test('a session whose id is all digits is still found and pinned', async () => {
+  const response = await fetch(`${origin}/api/auth/session`, { headers: { Cookie: 'showlio_access_33301690=access-1' } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-showlio-slot'), '33301690');
+});
+
+test('changing the password checks the current one, sets the new one and keeps the session', async () => {
+  const signedInCookie = 'showlio_access=access-2; showlio_refresh=p.refresh-1';
+  const change = (body, cookie = signedInCookie) => post('password', body, { cookie });
+  assert.equal((await post('password', { current: 'correct-horse', password: 'new-password-1', confirm: 'new-password-1' })).status, 401);
+  const invalid = await change({ current: '', password: 'short', confirm: 'nope' });
+  assert.equal(invalid.status, 422);
+  assert.deepEqual(Object.keys((await invalid.json()).errors).sort(), ['confirm', 'current', 'password']);
+  assert.ok((await (await change({ current: 'same-password', password: 'same-password', confirm: 'same-password' })).json()).errors.password);
+
+  calls.length = 0;
+  const wrong = await change({ current: 'wrong-password', password: 'new-password-1', confirm: 'new-password-1' });
+  assert.equal(wrong.status, 422);
+  assert.ok((await wrong.json()).errors.current);
+  assert.equal(called('PUT /auth/v1/user').length, 0, 'a wrong current password changes nothing');
+
+  calls.length = 0;
+  const response = await change({ current: 'correct-horse', password: 'new-password-1', confirm: 'new-password-1' });
+  assert.equal(response.status, 200);
+  assert.equal(called('POST /auth/v1/token?grant_type=password')[0].body.email, 'ana@example.com');
+  assert.equal(called('POST /auth/v1/logout?scope=local')[0].authorization, 'Bearer access-1', 'the checking session is ended');
+  const [update] = called('PUT /auth/v1/user');
+  assert.deepEqual([update.authorization, update.body], ['Bearer access-2', { password: 'new-password-1' }]);
+  assert.equal(response.headers.getSetCookie().length, 0, 'the signed-in session is kept');
+
+  const weak = await change({ current: 'correct-horse', password: 'weakweak1', confirm: 'weakweak1' });
+  assert.equal(weak.status, 422);
+  assert.ok((await weak.json()).errors.password);
+});
+
 const signedIn = { Cookie: `showlio_access=${ACCESS_JWT}`, 'Content-Type': 'application/json' };
 const profileApi = (method, body, path = 'profile', headers = signedIn) => fetch(`${origin}/api/${path}`, { method, headers, body: body && JSON.stringify(body) });
 const avatarUrl = (path) => `http://127.0.0.1:${fake.address().port}/storage/v1/object/public/avatars/${path}`;
@@ -425,6 +475,7 @@ test('settings switches are one call and reject anything else', async () => {
   const response = await profileApi('PATCH', { messageNotifications: true, communityDiscovery: false }, 'profile/preferences');
   assert.equal(response.status, 200);
   assert.deepEqual(calls.map((call) => [call.route, call.body]), [['POST /rest/v1/rpc/set_my_preferences', { changes: { messageNotifications: true, communityDiscovery: false } }]]);
+  assert.equal((await profileApi('PATCH', { profileCompleted: true }, 'profile/preferences')).status, 200);
   assert.equal((await profileApi('PATCH', { visibility: 'public' }, 'profile/preferences')).status, 422);
   assert.equal((await profileApi('PATCH', { productNotifications: 'yes' }, 'profile/preferences')).status, 422);
   assert.equal((await profileApi('PATCH', {}, 'profile/preferences')).status, 422);
@@ -440,7 +491,8 @@ test('the feed is one database call plus one signing call, mapped to workspace c
   assert.deepEqual(calls[1].body, { expiresIn: 43200, paths: [`u1/${OWN_PROJECT}/cover.webp`, `u1/${OWN_PROJECT}/detail.webp`] });
   const [own, other] = data.projects;
   const photos = [signedUrl(`u1/${OWN_PROJECT}/cover.webp`), signedUrl(`u1/${OWN_PROJECT}/detail.webp`)];
-  assert.deepEqual(own, { id: OWN_PROJECT, title: 'My Reel', description: 'Edit of the year.', image: photos[0], images: photos, categories: ['Video'], tools: ['Premiere'], creator: 'u1', owner: true, views: 9, likes: 2, comments: 0, saves: 0, created: Date.parse('2026-10-30T12:00:00Z'), duration: '', draft: false, real: true });
+  assert.deepEqual(own, { id: OWN_PROJECT, title: 'My Reel', description: 'Edit of the year.', image: photos[0], images: photos, categories: ['Video'], tools: ['Premiere'], creator: 'u1', owner: true, media: [{ path: `u1/${OWN_PROJECT}/cover.webp`, url: photos[0] }, { path: `u1/${OWN_PROJECT}/detail.webp`, url: photos[1] }], views: 9, likes: 2, comments: 0, saves: 0, created: Date.parse('2026-10-30T12:00:00Z'), duration: '', draft: false, real: true });
+  assert.deepEqual(other.media, [], 'only the creator gets storage paths');
   assert.deepEqual([other.owner, other.image, other.images, other.categories, other.likes], [false, '/assets/images/workspace-content.webp', [], ['Other'], 4], 'the viewer\'s own like is added back by the card');
   assert.deepEqual(data.creators, [{ id: OTHER_CREATOR, name: 'Bo Lim', role: '@bo', username: 'bo', bio: 'Automations.', avatar: '', followers: 7, hue: 270, real: true }]);
   assert.deepEqual([data.likes, data.following], [[OTHER_PROJECT], [OTHER_CREATOR]]);
@@ -612,7 +664,7 @@ test('portfolio: anyone can open a public creator page with signed photos; unkno
   const response = await fetch(`${origin}/api/portfolio?u=Bo_Lim`);
   assert.equal(response.status, 200);
   const page = await response.json();
-  assert.deepEqual(page.profile, { id: OTHER_CREATOR, username: 'bo_lim', name: 'Bo Lim', headline: 'Colorist', bio: 'I grade films.', location: 'Cebu', availability: '', avatar: '', hue: 270, visible: true, own: false, joined: Date.parse('2026-10-01T00:00:00Z') });
+  assert.deepEqual(page.profile, { id: OTHER_CREATOR, username: 'bo_lim', name: 'Bo Lim', headline: 'Colorist', bio: 'I grade films.', location: 'Cebu', availability: '', avatar: '', hue: 270, visible: true, own: false, joined: Date.parse('2026-10-01T00:00:00Z'), template: 'minimal' });
   assert.deepEqual([page.skills, page.links, page.followers], [['DaVinci Resolve'], [{ kind: 'website', url: 'https://bo.example.com' }], 4]);
   assert.deepEqual(page.projects, [{ id: OTHER_PROJECT, title: 'Bot', description: 'Sorts mail.', categories: ['Other'], tools: ['Python'], images: [`http://127.0.0.1:${fake.address().port}/storage/v1/object/sign/project-media/${OTHER_CREATOR}/${OTHER_PROJECT}/a.webp?token=signed`], likes: 5, views: 40, comments: 2, created: Date.parse('2026-10-29T08:00:00Z') }]);
   assert.deepEqual(calls.filter((call) => call.route.includes('creator_portfolio')).map((call) => [call.body, call.authorization]), [[{ handle: 'bo_lim' }, undefined]], 'a guest asks as anon');
@@ -626,4 +678,75 @@ test('portfolio: anyone can open a public creator page with signed photos; unkno
     assert.equal(missing.status, 404);
     assert.match((await missing.json()).error, /isn’t public/);
   }
+});
+
+test('messages: the inbox, one conversation, sending and finding people are one call each as the member', async () => {
+  for (const path of ['messages', `messages/thread?with=${OTHER_CREATOR}`, 'messages/people?q=bo']) assert.equal((await fetch(`${origin}/api/${path}`)).status, 401, path);
+  const boAvatar = avatarUrl(`${OTHER_CREATOR}/me.webp`);
+
+  const inbox = await (await profileApi('GET', undefined, 'messages')).json();
+  assert.deepEqual(inbox, { conversations: [{ id: OTHER_CREATOR, username: 'bo', name: 'Bo Lim', avatar: boAvatar, activeAt: null, lastMessage: 'See you!', lastMine: false, lastAt: Date.parse('2026-10-31T03:00:00Z'), theme: 'rose', unread: 2 }], unread: 2 });
+  assert.deepEqual([calls[0].route, calls[0].authorization], ['POST /rest/v1/rpc/my_conversations', `Bearer ${ACCESS_JWT}`]);
+
+  calls.length = 0;
+  const thread = await (await profileApi('GET', undefined, `messages/thread?with=${OTHER_CREATOR}`)).json();
+  assert.deepEqual(thread.partner, { id: OTHER_CREATOR, username: 'bo', name: 'Bo Lim', avatar: boAvatar, headline: 'Automations', location: 'Cebu', activeAt: Date.parse('2026-10-31T03:05:00Z') });
+  assert.deepEqual(thread.messages, [{ id: 'e0000000-0000-4000-8000-000000000001', body: 'See you!', mine: false, created: Date.parse('2026-10-31T03:00:00.250Z') }]);
+  assert.deepEqual([thread.theme, thread.partnerReadAt], ['sunset', Date.parse('2026-10-31T03:00:00.250Z')]);
+  assert.deepEqual(calls.map((call) => [call.route, call.body]), [['POST /rest/v1/rpc/conversation_messages', { other: OTHER_CREATOR }]]);
+  assert.equal((await profileApi('GET', undefined, `messages/thread?with=${NEW_PROJECT}`)).status, 404);
+  assert.equal((await profileApi('GET', undefined, 'messages/thread?with=bo')).status, 422);
+
+  calls.length = 0;
+  const sent = await profileApi('POST', { to: OTHER_CREATOR, body: '  Hello\r\nBo  ' }, 'messages');
+  assert.equal(sent.status, 201);
+  assert.equal((await sent.json()).message.body, 'Hello\nBo');
+  assert.deepEqual(calls[0].body, { recipient: OTHER_CREATOR, body: 'Hello\nBo' });
+  calls.length = 0;
+  assert.equal((await profileApi('POST', { to: OTHER_CREATOR, body: '   ' }, 'messages')).status, 422);
+  assert.equal((await profileApi('POST', { to: OTHER_CREATOR, body: 'x'.repeat(2001) }, 'messages')).status, 422);
+  assert.equal(calls.length, 0, 'empty or long messages never reach the database');
+  assert.equal((await profileApi('POST', { to: NEW_PROJECT, body: 'Hi' }, 'messages')).status, 404);
+  assert.equal((await profileApi('POST', { to: OTHER_CREATOR, body: 'too fast' }, 'messages')).status, 429);
+
+  const people = await (await profileApi('GET', undefined, 'messages/people?q=%20bo%20')).json();
+  assert.deepEqual(people.people.map((person) => [person.username, person.avatar]), [['bo', boAvatar]]);
+  assert.equal((await profileApi('GET', undefined, `messages/people?q=${'a'.repeat(41)}`)).status, 422);
+
+  calls.length = 0;
+  const themed = await profileApi('PATCH', { with: OTHER_CREATOR, theme: 'forest' }, 'messages/theme');
+  assert.deepEqual([themed.status, await themed.json()], [200, { theme: 'forest' }]);
+  assert.deepEqual(calls[0].body, { other: OTHER_CREATOR, choice: 'forest' });
+  assert.equal((await profileApi('PATCH', { with: OTHER_CREATOR, theme: 'neon' }, 'messages/theme')).status, 422);
+  assert.equal((await profileApi('PATCH', { with: NEW_PROJECT, theme: 'rose' }, 'messages/theme')).status, 404);
+  assert.equal((await profileApi('PATCH', { showActiveStatus: false }, 'profile/preferences')).status, 200);
+});
+
+test('portfolio template: the creator picks Studio, Editorial or Spotlight for their page', async () => {
+  assert.equal((await fetch(`${origin}/api/portfolio/template`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ template: 'showcase' }) })).status, 401);
+  calls.length = 0;
+  const saved = await profileApi('PATCH', { template: 'showcase' }, 'portfolio/template');
+  assert.deepEqual([saved.status, await saved.json()], [200, { template: 'showcase' }]);
+  assert.deepEqual([calls[0].route, calls[0].body, calls[0].authorization], ['POST /rest/v1/rpc/set_my_portfolio_template', { choice: 'showcase' }, `Bearer ${ACCESS_JWT}`]);
+  calls.length = 0;
+  assert.equal((await profileApi('PATCH', { template: 'neon' }, 'portfolio/template')).status, 422);
+  assert.equal(calls.length, 0, 'unknown templates never reach the database');
+  for (const template of ['bento', 'gallery']) assert.equal((await profileApi('PATCH', { template }, 'portfolio/template')).status, 200, template);
+});
+
+test('editing a project sends the details and the photos that stay, then deletes the removed files', async () => {
+  const keep = [{ path: `u1/${OWN_PROJECT}/${'a'.repeat(24)}.webp`, position: 1 }];
+  const details = { id: OWN_PROJECT, title: 'My Reel (final)', description: 'The final cut.', category: 'Video', tools: ['Premiere', 'After Effects'], keep };
+  assert.equal((await fetch(`${origin}/api/projects`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details) })).status, 401);
+  calls.length = 0;
+  const response = await profileApi('PATCH', details, 'projects');
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls[0].body, { project: OWN_PROJECT, details: { title: 'My Reel (final)', summary: 'The final cut.', categories: ['Video'], tools: ['Premiere', 'After Effects'] }, keep });
+  assert.deepEqual([calls[1].route, calls[1].body], ['DELETE /storage/v1/object/project-media', { prefixes: [`u1/${OWN_PROJECT}/old.webp`] }]);
+  calls.length = 0;
+  assert.equal((await profileApi('PATCH', { ...details, title: ' ' }, 'projects')).status, 422);
+  assert.equal((await profileApi('PATCH', { ...details, keep: [{ path: `u1/${OTHER_PROJECT}/${'a'.repeat(24)}.webp`, position: 0 }] }, 'projects')).status, 422, 'photos of another project are refused');
+  assert.equal((await profileApi('PATCH', { ...details, keep: [{ path: '../../etc/passwd', position: 0 }] }, 'projects')).status, 422);
+  assert.equal(calls.length, 0, 'bad edits never reach the database');
+  assert.equal((await profileApi('PATCH', { ...details, id: OTHER_PROJECT, keep: [] }, 'projects')).status, 404);
 });

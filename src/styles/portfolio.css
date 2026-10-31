@@ -191,9 +191,11 @@ body.pb-body {
 .pb-device-toggle button.is-active { color: #0061f5; font-weight: 600; }
 .pb-device-toggle .pb-icon { width: 19px; height: 19px; }
 .pb-preview-surface { width: 100%; max-width: 100%; margin: 0 auto; overflow: hidden; border: 1px solid #e0e8f3; border-radius: 16px; padding: 8px; background: #ffffffa8; box-shadow: var(--pb-shadow-md); transition: max-width .6s var(--pb-ease), border-radius .6s var(--pb-ease), padding .6s var(--pb-ease), box-shadow .6s var(--pb-ease); }
-.pb-preview-surface > .pf-site { border-radius: 10px; overflow: hidden; min-height: 620px; transition: border-radius .6s var(--pb-ease); }
+.pb-preview-surface { position: relative; padding: 0; }
+.pb-preview-page { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.pb-preview-page > .pf-site { overflow: hidden; min-height: 760px; }
 .pb-preview-surface.is-mobile { max-width: 380px; padding: 0; border-radius: 30px; background: #fff; box-shadow: 0 0 0 7px #fff, 0 0 0 8px #dfe7f2, var(--pb-shadow-lg); margin-top: 10px; }
-.pb-preview-surface.is-mobile > .pf-site { border-radius: 30px; }
+.pb-preview-surface.is-mobile > .pb-preview-page > .pf-site { min-height: 780px; }
 .pb-preview-note { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 16px auto 0; color: #7c8eac; font-size: 12px; }
 .pb-preview-note .pb-icon { width: 16px; height: 16px; }
 .pb-mobile-preview { display: none; }
@@ -288,23 +290,6 @@ body.pb-body {
 .pb-style-option.is-active::after { content: ""; position: absolute; top: 9px; right: 9px; width: 22px; height: 22px; border: 2px solid #fff; border-radius: 50%; background: var(--pb-blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12.5 4 4 8-9'/%3E%3C/svg%3E") center / 12px no-repeat; box-shadow: 0 2px 6px #006aff59; animation: pb-pop .45s var(--pb-spring) both; }
 .pb-style-option strong { display: block; margin-top: 11px; font-size: 14px; font-weight: 650; padding-inline: 3px; }
 .pb-style-option > small { display: block; margin-top: 4px; color: #7180a0; font-size: 12px; line-height: 1.45; padding-inline: 3px; }
-.pb-mini-layout { display: grid; align-content: start; gap: 6px; width: 100%; aspect-ratio: 1.3; overflow: hidden; background: #f6f8fc; border: 1px solid #e3e9f3; border-radius: 7px; padding: 8px; }
-.pb-mini-layout i { display: block; }
-.pb-mini-bar { height: 4px; width: 26px; border-radius: 2px; background: radial-gradient(circle, #c5d1e4 1.6px, transparent 1.8px) 0 50% / 7px 4px repeat-x; }
-.pb-mini-hero { display: flex; align-items: center; gap: 6px; }
-.pb-mini-hero b { display: block; }
-.pb-mini-hero b:first-child { width: 16px; height: 16px; border-radius: 50%; background: #cfd9ec; flex-shrink: 0; }
-.pb-mini-hero b:last-child { flex: 1; height: 5px; border-radius: 3px; background: #d9e1ee; box-shadow: 0 8px 0 -1px #e5ebf4; margin-bottom: 7px; }
-.pb-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-.pb-mini-grid b { display: block; aspect-ratio: 1.35; border-radius: 3px; background: linear-gradient(140deg, #d3dbf6, #a9b7e9); transition: transform .5s var(--pb-ease); }
-.pb-style-option:hover .pb-mini-grid b { transform: translateY(-2px); }
-.pb-style-option:hover .pb-mini-grid b:nth-child(2n) { transform: translateY(-1px); }
-.is-minimal .pb-mini-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 4px; }
-.is-minimal .pb-mini-grid b { aspect-ratio: 1.1; background: linear-gradient(140deg, #e1e7f5, #c4cee9); }
-.is-minimal .pb-mini-hero b:first-child { border-radius: 4px; }
-.pb-mini-banner { height: 30px; border-radius: 4px; background: linear-gradient(160deg, #cbd4f5 10%, #8e9fe2 55%, #b9c5f0); position: relative; overflow: hidden; }
-.pb-mini-banner::after { content: ""; position: absolute; inset: 55% -10% -40% 30%; border-radius: 50%; background: #ffffff73; }
-.is-showcase .pb-mini-grid b { aspect-ratio: 1.1; }
 .pb-swatches { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-height: 44px; }
 .pb-swatch { position: relative; width: 36px; height: 36px; border: 0; border-radius: 50%; padding: 0; background: var(--swatch); box-shadow: inset 0 0 0 1px #0f173b14; transition: transform .35s var(--pb-spring), box-shadow .3s var(--pb-ease); }
 .pb-swatch:hover { transform: scale(1.12); }
@@ -648,3 +633,45 @@ body[data-enter="first"] .pb-step:nth-of-type(5) { animation-delay: .2s; }
 @media (prefers-reduced-motion: reduce) {
   .pb-body *, .pb-body *::before, .pb-body *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Works that come from the creator's Showlio uploads */
+.pb-linked { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: #4a5a85; font-size: 12px; font-weight: 600; }
+.pb-linked .pb-icon { width: 14px; height: 14px; color: var(--pb-blue); }
+.pb-linked-note { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #eef4ff; color: #2d3d66; font-size: 13px; line-height: 1.55; }
+.pb-linked-note .pb-icon { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; color: var(--pb-blue); }
+.pb-cover-upload.is-linked { cursor: default; }
+.pb-field input[readonly], .pb-field textarea[readonly] { background: #f5f7fb; color: #4a5a85; cursor: default; }
+
+/* Logo size slider under "Show my logo" */
+.pb-logo-size { display: grid; grid-template-columns: auto minmax(0, 1fr) 4.5em; align-items: center; gap: 14px; margin-top: 14px; padding-left: 62px; }
+.pb-logo-size label { font-size: 13px; font-weight: 600; }
+.pb-logo-size input { width: 100%; accent-color: var(--pb-blue); }
+.pb-logo-size input:disabled { opacity: .45; }
+.pb-logo-size output { color: #5d6b8c; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Template choices: equal cards, each with a live miniature of the creator's page */
+.pb-style-layouts { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 14px; align-items: stretch; }
+.pb-style-option { display: flex; flex-direction: column; height: 100%; padding: 8px 8px 14px; }
+.pb-template-thumb { position: relative; display: block; width: 100%; aspect-ratio: 16 / 11; overflow: hidden; border: 1px solid #e3e9f3; border-radius: 8px; background: #f6f8fc; }
+.pb-template-page { position: absolute; top: 0; left: 0; width: 1280px; transform-origin: 0 0; transform: scale(var(--pb-thumb-scale, .14)); pointer-events: none; }
+.pb-template-page .pf-site { min-height: 880px; }
+.pb-style-option strong { margin-top: 12px; }
+.pb-style-option > small { flex: 1; }
+.pb-style-option:hover .pb-template-thumb { border-color: #a8c7f5; }
+.pb-style-option.is-active .pb-template-thumb { border-color: var(--pb-blue); }
+
+/* Showlio's popups in the builder (SweetAlert2): "it's live", then the QR code to share */
+.pb-swal { width: min(420px, calc(100vw - 32px)); padding: 28px 24px 24px; border: 1px solid #e1e9f7; border-radius: 22px; color: #0b0d36; font-family: inherit; box-shadow: 0 25px 90px #0c1c5133; }
+.pb-swal .swal2-title { padding: 4px 0 0; color: #0b0d36; font-size: 22px; font-weight: 750; letter-spacing: -.4px; }
+.pb-swal .swal2-html-container { margin: 8px 0 0; padding: 0; overflow: visible; color: #5d6b8c; font-size: 14px; line-height: 1.6; }
+.pb-swal .swal2-icon.swal2-success, .pb-swal .swal2-icon.swal2-success .swal2-success-ring { border-color: #0b56ff4d; color: #0b56ff; }
+.pb-swal .swal2-icon.swal2-success [class^=swal2-success-line] { background-color: #0b56ff; }
+.pb-swal .swal2-timer-progress-bar { background: linear-gradient(105deg, #00a4ff, #0b56ff 55%, #7909ff); }
+.pb-swal-actions { gap: 10px; margin-top: 20px; }
+.pb-swal .swal2-confirm { min-width: 140px; }
+.pb-swal-qr { display: grid; place-items: center; width: 236px; margin: 16px auto 18px; padding: 14px; border-radius: 22px; background: #fff; box-shadow: 0 0 0 1px #e3e9f3, 0 18px 40px -24px #0b0d3666; }
+.pb-swal-qr svg { display: block; width: 208px; height: 208px; }
+.pb-swal-link { display: flex; gap: 8px; }
+.pb-swal-link input { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid #dce5f2; border-radius: 10px; background: #f6f9fd; color: #22305a; font: inherit; font-size: 13px; }
+.pb-swal-link .pb-btn, .pb-swal-more .pb-btn { min-height: 44px; }
+.pb-swal-more { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }

@@ -8,3 +8,5 @@ for (const [input, output] of [['src/styles/app.css','public/assets/css/app.css'
 }
 mkdirSync('public/assets/vendor', { recursive: true });
 copyFileSync('node_modules/qrcode-generator/dist/qrcode.mjs', 'public/assets/vendor/qrcode.js');
+copyFileSync('node_modules/sweetalert2/dist/sweetalert2.esm.all.min.js', 'public/assets/vendor/sweetalert2.js');
+copyFileSync('node_modules/canvas-confetti/dist/confetti.module.mjs', 'public/assets/vendor/confetti.js');
