@@ -3,7 +3,7 @@ import { normalizePortfolio, visibleWorks, filterWorks } from './portfolio-model
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const labels = { all: 'All', website: 'Websites', app: 'Apps', product: 'Products', design: 'Design', video: 'Video', other: 'Other' };
 const singular = { website: 'Website', app: 'Mobile app', product: 'Product', design: 'Design', video: 'Video', other: 'Project' };
-// The three page templates. Their keys stay "classic", "minimal" and "showcase" in saved data.
+// Original template keys stay stable in saved portfolios.
 export const templates = {
   classic: { name: 'Studio', work: 'Selected work', about: 'About', contact: 'Have a project in mind?', cta: 'View my work' },
   minimal: { name: 'Editorial', work: 'Work', about: 'About', contact: 'Let’s make something good.', cta: 'See the work' },
@@ -65,9 +65,10 @@ function identity(profile, style, small = false) {
 // A cover drawn from the title, for work without a photo.
 const coverArt = (title, className = 'pf-work-placeholder') => `<span class="${className}" style="--pf-hue:${hueOf(title || 'work')}" aria-hidden="true"><span>${escapeHtml(initials(title || 'Work'))}</span></span>`;
 
-function workCard(work) {
+function workCard(work, layout) {
   const tools = work.skills.length ? `<span class="pf-work-tools">${work.skills.slice(0, 4).map(escapeHtml).join(' · ')}</span>` : '';
-  return `<article class="pf-work-card"><button class="pf-work-button" type="button" data-pf-work="${escapeHtml(work.id)}" aria-label="View ${escapeHtml(work.title || 'Untitled work')}"><span class="pf-work-media">${work.image ? image(work.image, work.title) : coverArt(work.title)}</span><span class="pf-work-caption"><span class="pf-work-text"><strong>${escapeHtml(work.title || 'Untitled work')}</strong><span class="pf-work-type">${escapeHtml(work.category || singular[work.type])}</span>${work.description ? `<span class="pf-work-desc">${escapeHtml(work.description)}</span>` : ''}${tools}</span><span class="pf-work-go">${external}</span></span></button></article>`;
+  const supporting = layout === 'gallery' ? work.images.filter(src => src !== work.image).slice(0, 2) : [];
+  return `<article class="pf-work-card"><button class="pf-work-button" type="button" data-pf-work="${escapeHtml(work.id)}" aria-label="View ${escapeHtml(work.title || 'Untitled work')}"><span class="pf-work-images"><span class="pf-work-media">${work.image ? image(work.image, work.title) : coverArt(work.title)}</span>${supporting.length ? `<span class="pf-work-supporting">${supporting.map(src => image(src, work.title)).join('')}</span>` : ''}</span><span class="pf-work-caption"><span class="pf-work-text"><strong>${escapeHtml(work.title || 'Untitled work')}</strong><span class="pf-work-type">${escapeHtml(work.category || singular[work.type])}</span>${work.description ? `<span class="pf-work-desc">${escapeHtml(work.description)}</span>` : ''}${tools}</span><span class="pf-work-go">${external}</span></span></button></article>`;
 }
 
 /** The hero's picture: the creator's photo, their latest work, or both, depending on the template. */
@@ -82,28 +83,27 @@ function heroVisual(layout, profile, style, featured) {
   }
   if (layout === 'minimal') return `<figure class="pf-hero-figure">${photo || (featured ? image(featured.image, '', 'pf-portrait-image', true) : big)}</figure>`;
   if (layout === 'gallery') return photo || monogram(profile.name) ? `<figure class="pf-hero-figure">${photo || big}</figure>` : '';
-  return `<div class="pf-collage${featured && photo ? '' : ' is-single'}"><figure class="pf-collage-main">${photo || (featured ? image(featured.image, '', 'pf-portrait-image', true) : big)}</figure>${featured && photo ? `<figure class="pf-collage-card">${image(featured.image, '')}<figcaption><small>Latest work</small><strong>${escapeHtml(featured.title || 'Untitled work')}</strong></figcaption></figure>` : ''}</div>`;
+  return `<div class="pf-collage is-single"><figure class="pf-collage-main">${photo || (featured ? image(featured.image, '', 'pf-portrait-image', true) : big)}</figure></div>`;
 }
 
-/** Bento's hero: the person, their photo, their numbers, a way to reach them, their skills and their latest work, as tiles. */
-function bentoHero({ profile, style, featured, available, words, contactUrl, lead, status }) {
+/** Bento's tiles use only the creator's available identity, imagery and contact details. */
+function bentoHero({ profile, style, featured, words, contactUrl, lead, status }) {
   const name = escapeHtml(profile.name);
   const photo = style.showAvatar && profile.avatar
-    ? image(profile.avatar, profile.name ? `${profile.name} portrait` : 'Portrait', 'pf-portrait-image', true)
-    : monogram(profile.name) ? `<span class="pf-mark pf-mark-hero" aria-hidden="true"><span>${escapeHtml(monogram(profile.name))}</span></span>` : coverArt('', 'pf-backdrop-art');
+    ? `<figure class="pf-tile pf-tile-photo">${image(profile.avatar, profile.name ? `${profile.name} portrait` : 'Portrait', 'pf-portrait-image', true)}</figure>` : '';
   const intro = `<div class="pf-tile pf-tile-intro">${name ? `<h1>${name}</h1>` : ''}${profile.role ? `<p class="pf-role">${escapeHtml(profile.role)}</p>` : ''}${lead ? `<p class="pf-intro">${escapeHtml(lead)}</p>` : ''}<div class="pf-hero-actions"><a class="pf-button" href="#pf-work">${words.cta} ${arrow}</a>${contactUrl ? link(contactUrl, 'Get in touch', 'pf-text-link') : ''}</div></div>`;
-  const facts = `<div class="pf-tile pf-tile-facts">${status || '<span></span>'}<div>${profile.location ? `<p class="pf-tile-line">${icons.pin}${escapeHtml(profile.location)}</p>` : ''}<p class="pf-tile-number"><strong>${available.length}</strong>${available.length === 1 ? 'project' : 'projects'}</p></div></div>`;
-  const contactInner = `<span class="pf-tile-icon">${icons.send}</span><strong>${words.contact}</strong><span class="pf-tile-go">${arrow}</span>`;
-  const contact = contactUrl ? link(contactUrl, contactInner, 'pf-tile pf-tile-contact') : `<a class="pf-tile pf-tile-contact" href="#pf-contact">${contactInner}</a>`;
-  const skills = `<div class="pf-tile pf-tile-skills"><h2 class="pf-tile-title">What I do</h2>${profile.skills.length ? chips(profile.skills.slice(0, 8)) : `<p class="pf-tile-text">${escapeHtml(profile.role || 'Creative work, start to finish.')}</p>`}</div>`;
+  const facts = status || profile.location ? `<div class="pf-tile pf-tile-facts">${status}${profile.location ? `<p class="pf-tile-line">${icons.pin}${escapeHtml(profile.location)}</p>` : ''}</div>` : '';
+  const contactInner = `<span class="pf-tile-icon">${icons.send}</span><strong>${words.contact}</strong><span class="pf-tile-action">Get in touch</span>`;
+  const contact = contactUrl ? link(contactUrl, contactInner, 'pf-tile pf-tile-contact') : '';
+  const skills = profile.skills.length ? `<div class="pf-tile pf-tile-skills"><h2 class="pf-tile-title">What I do</h2>${chips(profile.skills.slice(0, 8))}</div>` : '';
   const latest = featured
     ? `<a class="pf-tile pf-tile-latest" href="#pf-work">${image(featured.image, '')}<span class="pf-tile-caption"><small>Latest work</small><strong>${escapeHtml(featured.title || 'Untitled work')}</strong></span></a>`
-    : `<a class="pf-tile pf-tile-latest" href="#pf-work">${coverArt(profile.name || 'Work', 'pf-backdrop-art')}<span class="pf-tile-caption"><strong>${available.length ? 'See my work' : 'Work coming soon'}</strong></span></a>`;
-  return `<section class="pf-hero"><div class="pf-container pf-bento-hero">${intro}<figure class="pf-tile pf-tile-photo">${photo}</figure>${facts}${contact}${skills}${latest}</div></section>`;
+    : '';
+  return `<section class="pf-hero"><div class="pf-container pf-bento-hero">${intro}${photo}${latest}${contact}${skills}${facts}</div></section>`;
 }
 
 /** Safe, self-contained markup shared by the builder and browser-only viewer. */
-export function renderPortfolio(portfolio, { embedded = false, type = 'all' } = {}) {
+export function renderPortfolio(portfolio, { embedded = false, type = 'all', community = null } = {}) {
   const value = normalizePortfolio(portfolio);
   const { profile, style } = value;
   const layout = style.layout;
@@ -115,19 +115,21 @@ export function renderPortfolio(portfolio, { embedded = false, type = 'all' } = 
   const name = escapeHtml(profile.name);
   const contactUrl = profile.email ? `mailto:${profile.email}` : profile.website || '';
   const filters = ['all', ...Object.keys(singular).filter(key => available.some(work => work.type === key))];
+  const showFilters = filters.length > 2 || (available.length > 0 && selected !== 'all' && works.length === 0);
+  const communityAction = community === 'owner' ? link('/portfolio/', 'Edit your portfolio', 'pf-community-action') : community === 'guest' ? link('/auth/#sign-up', 'Join Showlio', 'pf-community-action') : '';
   const socialLinks = [['linkedin', 'LinkedIn'], ['instagram', 'Instagram'], ['github', 'GitHub'], ['website', 'Website']].filter(([key]) => profile[key]).map(([key, label]) => link(profile[key], icons[key], 'pf-social', label)).join('');
   const lead = profile.intro || (profile.bio ? firstSentence(profile.bio) : '');
   const status = profile.availability ? `<p class="pf-status"><i aria-hidden="true"></i>${escapeHtml(profile.availability)}</p>` : '';
   const facts = [profile.location ? `<li>${icons.pin}${escapeHtml(profile.location)}</li>` : '', available.length ? `<li>${icons.grid}${available.length} ${available.length === 1 ? 'project' : 'projects'}</li>` : ''].join('');
   const aboutVisual = style.showAvatar && profile.avatar ? image(profile.avatar, '', 'pf-about-photo') : monogram(profile.name) ? `<span class="pf-mark pf-mark-about" aria-hidden="true"><span>${escapeHtml(monogram(profile.name))}</span></span>` : '';
   const contactAction = contactUrl ? link(contactUrl, `Get in touch ${arrow}`, 'pf-button') : '<span class="pf-contact-pending">Contact details coming soon</span>';
-  return `<div class="pf-site pf-${layout} pf-bg-${style.background}${embedded ? ' pf-embedded' : ''}" style="--pf-accent:${style.accent};--pf-accent-text:${accentText(style.accent)};--pf-logo:${style.logoSize}px" id="pf-top">
+  return `<div class="pf-site pf-${layout} pf-bg-${style.background}${embedded ? ' pf-embedded' : ''}${style.showAvatar && profile.avatar ? ' pf-has-portrait' : ''}" style="--pf-accent:${style.accent};--pf-accent-text:${accentText(style.accent)};--pf-logo:${style.logoSize}px" id="pf-top">
     <header class="pf-header"><div class="pf-container pf-header-inner">${identity(profile, style)}<nav class="pf-nav" aria-label="Portfolio"><a href="#pf-work">Work</a><a href="#pf-about">About</a><a href="#pf-contact">Contact</a>${contactUrl ? link(contactUrl, 'Let’s talk', 'pf-talk') : ''}</nav><details class="pf-menu"><summary aria-label="Open menu">${icons.menu}</summary><nav class="pf-menu-panel" aria-label="Portfolio menu"><a href="#pf-work">Work</a><a href="#pf-about">About</a><a href="#pf-contact">Contact</a></nav></details></div></header>
-    ${layout === 'bento' ? bentoHero({ profile, style, featured, available, words, contactUrl, lead, status }) : `<section class="pf-hero">${layout === 'showcase' ? heroVisual(layout, profile, style, featured) : ''}<div class="pf-container pf-hero-inner"><div class="pf-hero-copy">${status ? `<div class="pf-hero-top">${status}</div>` : ''}${name ? `<h1>${name}</h1>` : ''}${profile.role ? `<p class="pf-role">${escapeHtml(profile.role)}</p>` : ''}${lead ? `<p class="pf-intro">${escapeHtml(lead)}</p>` : ''}<div class="pf-hero-actions"><a class="pf-button" href="#pf-work">${words.cta} ${arrow}</a>${contactUrl ? link(contactUrl, 'Get in touch', 'pf-text-link') : '<a class="pf-text-link" href="#pf-about">About me</a>'}</div>${facts ? `<ul class="pf-facts">${facts}</ul>` : ''}</div>${layout === 'showcase' ? '' : heroVisual(layout, profile, style, featured)}</div></section>`}
-    <section class="pf-work-section pf-container" id="pf-work" aria-labelledby="pf-work-heading"><div class="pf-section-heading"><h2 id="pf-work-heading">${words.work}</h2><div class="pf-filters" aria-label="Filter selected work">${filters.map(key => `<button type="button" class="pf-filter${selected === key ? ' is-active' : ''}" data-pf-filter="${key}" aria-pressed="${selected === key}">${labels[key]}</button>`).join('')}</div></div><div class="pf-work-grid">${works.length ? works.map(workCard).join('') : `<div class="pf-empty-work"><span class="pf-empty-symbol" aria-hidden="true">${icons.grid}</span><h3>${available.length ? 'No work in this category' : 'Work will appear here'}</h3><p>${available.length ? 'Choose another category to explore more work.' : 'Selected projects will be displayed in this space.'}</p></div>`}</div></section>
-    <section class="pf-about" id="pf-about" aria-labelledby="pf-about-heading"><div class="pf-container pf-about-inner${aboutVisual ? '' : ' is-text-only'}">${aboutVisual ? `<div class="pf-about-visual">${aboutVisual}</div>` : ''}<div class="pf-about-copy"><h2 id="pf-about-heading">${words.about}</h2>${profile.bio ? `<p class="pf-bio">${escapeHtml(profile.bio)}</p>` : name ? `<p class="pf-bio">Meet ${name}${profile.role ? `, ${escapeHtml(profile.role)}` : ''}.</p>` : ''}${profile.location ? `<p class="pf-location">${icons.pin}Based in ${escapeHtml(profile.location)}</p>` : ''}${chips(profile.skills)}${socialLinks ? `<nav class="pf-socials" aria-label="Social links">${socialLinks}</nav>` : ''}</div></div></section>
-    <section class="pf-contact" id="pf-contact" aria-labelledby="pf-contact-heading"><div class="pf-container pf-contact-inner"><span class="pf-contact-symbol" aria-hidden="true">${icons.send}</span><div class="pf-contact-copy"><h2 id="pf-contact-heading">${words.contact}</h2><p>I’d love to hear about it and explore what we can create together.</p></div>${contactAction}</div></section>
-    <footer class="pf-footer"><div class="pf-container pf-footer-inner">${identity(profile, style, true)}<nav class="pf-footer-nav" aria-label="Footer"><a href="#pf-work">Work</a><a href="#pf-about">About</a><a href="#pf-contact">Contact</a></nav><a class="pf-made" href="/portfolio/">Made with ${showlioMark}<strong>Showlio</strong></a></div></footer>
+    ${layout === 'bento' ? bentoHero({ profile, style, featured, words, contactUrl, lead, status }) : `<section class="pf-hero">${layout === 'showcase' ? heroVisual(layout, profile, style, featured) : ''}<div class="pf-container pf-hero-inner"><div class="pf-hero-copy">${status ? `<div class="pf-hero-top">${status}</div>` : ''}${name ? `<h1>${name}</h1>` : ''}${profile.role ? `<p class="pf-role">${escapeHtml(profile.role)}</p>` : ''}${lead ? `<p class="pf-intro">${escapeHtml(lead)}</p>` : ''}<div class="pf-hero-actions"><a class="pf-button" href="#pf-work">${words.cta} ${arrow}</a>${contactUrl ? link(contactUrl, 'Get in touch', 'pf-text-link') : '<a class="pf-text-link" href="#pf-about">About me</a>'}</div>${facts ? `<ul class="pf-facts">${facts}</ul>` : ''}</div>${layout === 'showcase' ? '' : heroVisual(layout, profile, style, featured)}</div></section>`}
+    <section class="pf-work-section pf-container" id="pf-work" aria-labelledby="pf-work-heading"><div class="pf-section-heading"><h2 id="pf-work-heading">${words.work}</h2>${showFilters ? `<div class="pf-filters" aria-label="Filter selected work">${filters.map(key => `<button type="button" class="pf-filter${selected === key ? ' is-active' : ''}" data-pf-filter="${key}" aria-pressed="${selected === key}">${labels[key]}</button>`).join('')}</div>` : ''}</div><div class="pf-work-grid" data-count="${works.length}">${works.length ? works.map(work => workCard(work, layout)).join('') : `<div class="pf-empty-work"><span class="pf-empty-symbol" aria-hidden="true">${icons.grid}</span><h3>${available.length ? 'No work in this category' : 'Work will appear here'}</h3><p>${available.length ? 'Choose another category to explore more work.' : 'Selected projects will be displayed in this space.'}</p></div>`}</div></section>
+    <section class="pf-about" id="pf-about" aria-labelledby="pf-about-heading"><div class="pf-container pf-about-inner${aboutVisual ? '' : ' is-text-only'}">${aboutVisual ? `<div class="pf-about-visual">${aboutVisual}</div>` : ''}<div class="pf-about-copy"><h2 id="pf-about-heading">${words.about}</h2>${profile.bio ? `<p class="pf-bio">${escapeHtml(profile.bio)}</p>` : ''}${profile.location ? `<p class="pf-location">${icons.pin}Based in ${escapeHtml(profile.location)}</p>` : ''}${chips(profile.skills)}${socialLinks ? `<nav class="pf-socials" aria-label="Social links">${socialLinks}</nav>` : ''}</div></div></section>
+    <section class="pf-contact" id="pf-contact" aria-labelledby="pf-contact-heading"><div class="pf-container pf-contact-inner"><span class="pf-contact-symbol" aria-hidden="true">${icons.send}</span><div class="pf-contact-copy"><h2 id="pf-contact-heading">${words.contact}</h2></div>${contactAction}</div></section>
+    <footer class="pf-footer"><div class="pf-container pf-footer-inner">${identity(profile, style, true)}<nav class="pf-footer-nav" aria-label="Footer"><a href="#pf-work">Work</a><a href="#pf-about">About</a><a href="#pf-contact">Contact</a></nav><a class="pf-made" href="/portfolio/">Made with ${showlioMark}<strong>Showlio</strong></a>${communityAction}</div></footer>
   </div>`;
 }
 

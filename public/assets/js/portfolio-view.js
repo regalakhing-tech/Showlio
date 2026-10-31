@@ -9,6 +9,7 @@ const content = document.querySelector('[data-pf-dialog-content]');
 const params = new URLSearchParams(location.search);
 let portfolio;
 let activeType = 'all';
+let community = null;
 let lastWorkButton;
 
 function unavailable(storageError = false, message = '') {
@@ -18,7 +19,7 @@ function unavailable(storageError = false, message = '') {
 
 let filterTimer;
 function render() {
-  host.innerHTML = renderPortfolio(portfolio, { type: activeType });
+  host.innerHTML = renderPortfolio(portfolio, { type: activeType, community });
   dialog.className = `pf-dialog pf-dialog-${portfolio.style.layout}`;
   setFavicon();
 }
@@ -109,11 +110,7 @@ async function startCreator(handle) {
   if (!response.ok) { unavailable(false, page.error || 'This portfolio couldn’t be opened. Try again in a moment.'); return; }
   portfolio = portfolioFromCreator(page);
   document.title = `${portfolio.profile.name || 'Portfolio'}${portfolio.profile.role ? ` — ${portfolio.profile.role}` : ''}`;
-  const header = document.querySelector('[data-pf-community]');
-  header.hidden = false;
-  const action = header.querySelector('a:last-child');
-  action.href = page.profile.own ? '/portfolio/' : '/auth/#sign-up';
-  action.textContent = page.profile.own ? 'Edit your portfolio' : 'Join Showlio';
+  community = page.profile.own ? 'owner' : 'guest';
   if (page.profile.own && !page.profile.visible) {
     const note = document.querySelector('[data-pf-notice]');
     note.hidden = false;
@@ -143,7 +140,7 @@ async function start() {
     note.hidden = false;
     note.querySelector('span').textContent = isDraft ? 'Draft preview · Saved in this browser' : 'Portfolio preview · Saved in this browser';
     if (params.get('community') === '1') {
-      document.querySelector('[data-pf-community]').hidden = false;
+      community = 'guest';
       host.classList.add('pf-community-profile');
     }
     render();

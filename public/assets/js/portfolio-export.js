@@ -5,7 +5,7 @@ const cssPath = '/assets/css/portfolio-public.css';
 const localRaster = /^\/assets\/(?:[a-z0-9_~-][a-z0-9._~-]*\/)*[a-z0-9_~-][a-z0-9._~-]*\.(png|jpe?g|gif|webp|avif)$/i;
 // Profile photos and project photos synced from the creator's Showlio account.
 const storagePhoto = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\//i;
-// Inter and the Editorial template's Instrument Serif, all self-hosted.
+// Template typefaces are self-hosted; exports inline only local WOFF2 declarations.
 const fontUrl = /url\(\s*(["']?)(\/assets\/fonts\/[a-z0-9-]+\.woff2)\1\s*\)/gi;
 
 // This script is constant: portfolio text only enters the JSON data element.
@@ -23,10 +23,12 @@ const controls = `(() => {
         button.classList.toggle('is-active', active);
         button.setAttribute('aria-pressed', String(active));
       });
-      document.querySelectorAll('.pf-work-card').forEach(card => {
+      const cards = [...document.querySelectorAll('.pf-work-card')];
+      cards.forEach(card => {
         const work = works.get(card.querySelector('[data-pf-work]').dataset.pfWork);
         card.hidden = type !== 'all' && work.type !== type;
       });
+      document.querySelector('.pf-work-grid').dataset.count = String(cards.filter(card => !card.hidden).length);
       return;
     }
     const button = event.target.closest('[data-pf-work]');

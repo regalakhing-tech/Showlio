@@ -97,12 +97,14 @@ test('inline controls filter cards and open and close project details without im
   const filters = ['all', 'app', 'website'].map(type => ({ dataset: { pfFilter: type }, classList: { toggle() {} }, setAttribute(name, value) { this[name] = value; } }));
   const cards = ['shown', 'web'].map(id => ({ hidden: false, querySelector: () => ({ dataset: { pfWork: id } }) }));
   const detail = { innerHTML: '' };
+  const grid = { dataset: { count: '2' } };
   const dialog = { open: false, showModal() { this.open = true; }, close() { this.open = false; } };
-  const document = { getElementById(id) { return ({ 'pf-export-data': { textContent: data }, 'pf-export-dialog': dialog, 'pf-export-detail': detail })[id]; }, querySelectorAll(selector) { return selector === '[data-pf-filter]' ? filters : cards; }, addEventListener(name, listener) { listeners.set(name, listener); } };
+  const document = { getElementById(id) { return ({ 'pf-export-data': { textContent: data }, 'pf-export-dialog': dialog, 'pf-export-detail': detail })[id]; }, querySelector(selector) { assert.equal(selector, '.pf-work-grid'); return grid; }, querySelectorAll(selector) { return selector === '[data-pf-filter]' ? filters : cards; }, addEventListener(name, listener) { listeners.set(name, listener); } };
   vm.runInNewContext(scripts[1][1], { document });
   const click = (selector, control) => listeners.get('click')({ target: { closest: candidate => candidate === selector ? control : null }, preventDefault() {} });
   click('[data-pf-filter]', filters[1]);
   assert.deepEqual(cards.map(card => card.hidden), [false, true]);
+  assert.equal(grid.dataset.count, '1', 'the exported single-project layout follows the active filter');
   assert.equal(filters[1]['aria-pressed'], 'true');
   click('[data-pf-work]', { dataset: { pfWork: 'shown' } });
   assert.equal(dialog.open, true);
@@ -111,4 +113,5 @@ test('inline controls filter cards and open and close project details without im
   assert.equal(dialog.open, false);
   click('[data-pf-filter]', filters[0]);
   assert.deepEqual(cards.map(card => card.hidden), [false, false]);
+  assert.equal(grid.dataset.count, '2');
 });
