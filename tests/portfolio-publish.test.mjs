@@ -39,3 +39,8 @@ test('a failed upload or server save rejects publishing', async () => {
     assert.equal(saves, stage === 'upload' ? 0 : 1);
   }
 });
+
+test('the server’s publish time comes back so the editor can recognise its own publish', async () => {
+  const result = await publisher.publishPortfolio(snapshot(), { fetchImpl: async url => Response.json(url.endsWith('/media') ? { image: '/assets/images/logo.webp' } : { published: true, publishedAt: 4242 }) });
+  assert.equal(result.publishedAt, 4242);
+});

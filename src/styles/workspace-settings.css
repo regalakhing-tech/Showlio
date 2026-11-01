@@ -1304,3 +1304,48 @@
     transition: none;
   }
 }
+
+/* Modern pass: pill tabs, and the profile shown as others see it, cover photo first. */
+.ws-settings-tabs { gap: 6px; padding: 6px; border-radius: 16px; scrollbar-width: none; }
+.ws-settings-tabs::-webkit-scrollbar { display: none; }
+.ws-settings-tabs button { padding: 10px 16px; border-radius: 11px; transition: background-color .2s, color .2s, box-shadow .2s; }
+.ws-settings-tabs button:hover { background: #f3f6fc; color: var(--ws-settings-navy); }
+.ws-settings-tabs button.is-active { background: #edf4ff; color: var(--ws-settings-blue); box-shadow: inset 0 0 0 1px #d4e3ff; }
+.ws-settings-tabs button.is-active::after { display: none; }
+
+.ws-settings-hero { position: relative; margin: 10px 10px 0; }
+.ws-settings-cover { position: relative; height: clamp(150px, 18vw, 210px); overflow: hidden; border-radius: 12px; background: radial-gradient(120% 140% at 0% 0%, #7aa8ff 0%, transparent 55%), radial-gradient(120% 140% at 100% 100%, #b58cff 0%, transparent 55%), linear-gradient(120deg, #2f6bff, #7b3dff); }
+.ws-settings-cover > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ws-settings-cover::before { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, transparent 55%, #0c153c40); pointer-events: none; }
+.ws-settings-cover.is-busy::after { content: ''; position: absolute; inset: 0; z-index: 2; background: #0c153c66 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M12 3a9 9 0 1 0 9 9'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='.8s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E") center / 34px no-repeat; }
+.ws-settings-cover-actions { position: absolute; top: 12px; right: 12px; z-index: 3; display: flex; gap: 8px; }
+.ws-settings-glass { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 8px 14px; border: 1px solid #ffffff59; border-radius: 999px; background: #0c153c59; color: #fff; font: inherit; font-size: 12.5px; font-weight: 600; backdrop-filter: blur(10px) saturate(1.4); cursor: pointer; transition: background-color .2s, transform .2s; }
+.ws-settings-glass:hover:not(:disabled) { background: #0c153c80; transform: translateY(-1px); }
+.ws-settings-glass:disabled { opacity: .6; cursor: progress; }
+.ws-settings-glass.is-icon { width: 36px; justify-content: center; padding: 0; }
+.ws-settings .ws-settings-glass .ws-icon { width: 16px; height: 16px; }
+/* Only the photo overlaps the cover; the name sits below it, always readable. */
+.ws-settings-hero-body { display: flex; align-items: flex-start; gap: 18px; padding: 12px 16px 6px; position: relative; z-index: 3; }
+.ws-settings-hero .ws-settings-avatar-wrap { width: 108px; height: 108px; margin: -62px 0 0; flex-shrink: 0; }
+.ws-settings-hero .ws-settings-avatar-wrap img, .ws-settings-hero .ws-settings-avatar-wrap .ws-monogram { width: 100%; height: 100%; border: 4px solid #fff; border-radius: 50%; box-shadow: 0 10px 24px -12px #0c153c80; }
+.ws-settings-hero .ws-settings-avatar-wrap .ws-monogram { display: grid; place-items: center; font-size: 34px; }
+.ws-settings-hero .ws-settings-camera { right: 0; bottom: 4px; width: 34px; height: 34px; transition: transform .2s; }
+.ws-settings-hero .ws-settings-camera:hover { transform: scale(1.08); }
+.ws-settings-hero-text { display: grid; flex: 1; min-width: 0; gap: 2px; }
+.ws-settings-hero-text strong { font-size: 20px; font-weight: 750; letter-spacing: -.4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-settings-hero-text span { color: var(--ws-settings-muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-settings-hero-text small { margin-top: 3px; color: #8692ac; font-size: 11px; }
+.ws-settings-hero-body > .ws-btn { flex-shrink: 0; }
+.ws-settings-hero + .ws-settings-panel-heading { margin-top: 14px; border-top: 1px solid var(--ws-settings-border); }
+.ws-settings-form-footer { position: sticky; bottom: 0; z-index: 4; background: #ffffffeb; backdrop-filter: blur(8px); }
+@media (max-width: 600px) {
+  .ws-settings-tabs button { padding: 9px 12px; }
+  .ws-settings-hero { margin: 8px 8px 0; }
+  .ws-settings-cover { height: 132px; }
+  .ws-settings-glass:not(.is-icon) { padding-inline: 12px; font-size: 12px; }
+  .ws-settings-hero-body { flex-wrap: wrap; gap: 12px 14px; padding: 10px 10px 4px; }
+  .ws-settings-hero .ws-settings-avatar-wrap { width: 84px; height: 84px; margin-top: -48px; }
+  .ws-settings-hero-text { flex-basis: calc(100% - 98px); }
+  .ws-settings-hero-text strong { font-size: 17px; }
+  .ws-settings-hero-body > .ws-btn { width: 100%; justify-content: center; margin-bottom: 4px; }
+}

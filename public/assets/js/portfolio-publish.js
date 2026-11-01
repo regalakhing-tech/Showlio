@@ -26,6 +26,7 @@ export async function publishPortfolio(value, { fetchImpl = fetch, headers = {} 
     work.image = await image(work.image);
     work.images = await Promise.all(work.images.map(image));
   }
-  await request('/api/portfolio', 'PUT', snapshot);
+  const saved = await request('/api/portfolio', 'PUT', snapshot);
+  if (Number.isSafeInteger(saved.publishedAt)) snapshot.publishedAt = saved.publishedAt;
   return snapshot;
 }

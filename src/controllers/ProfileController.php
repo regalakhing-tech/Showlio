@@ -95,7 +95,8 @@ function account_response(array $supabase, int $status, mixed $data): never
     if ($status === 200 && is_array($data)) {
         $profile = $data['profile'];
         $profile['avatar'] = avatar_url($supabase, $profile['avatarPath'] ?? null);
-        unset($profile['avatarPath']);
+        $profile['cover'] = avatar_url($supabase, $profile['coverPath'] ?? null);
+        unset($profile['avatarPath'], $profile['coverPath']);
         json_response(['profile' => $profile, 'preferences' => $data['preferences']]);
     }
     // my_profile() is null, or save_my_profile() raised P0002, when the account has no profile row.
@@ -169,6 +170,48 @@ function profile_save(array $supabase): never
         supabase_request($supabase, 'DELETE', '/storage/v1/object/avatars/' . $unused, null, user_token($supabase));
     }
     account_response($supabase, $status, $data);
+}
+
+/**
+ * PUT /api/profile/cover with { image } sets the cover photo; DELETE removes it.
+ * @param array{url: string, publishable_key: string, secret_key: string} $supabase
+ */
+function profile_cover(array $supabase, bool $remove = false): never
+{
+    $token = user_token($supabase);
+    $owner = (string) (token_claims($token)['sub'] ?? '');
+    $path = null;
+    if (!$remove) {
+        [$image, $error] = image_upload(read_json_body(3 * 1024 * 1024)['image'] ?? null);
+        if ($error !== null || $image === null) {
+            invalid_input(['cover' => $error ?? 'Choose a cover photo.']);
+        }
+        $path = $owner . '/cover-' . bin2hex(random_bytes(12)) . '.' . $image['extension'];
+        [$status, $body] = supabase_request($supabase, 'POST', '/storage/v1/object/avatars/' . $path, $image['bytes'], $token, headers: ['Content-Type: ' . $image['type']], timeout: 45);
+        if ($status !== 200) {
+            error_log('Cover upload failed with status ' . $status . ': ' . json_encode($body));
+            json_response(['error' => 'Couldn’t upload your cover. Try again or choose a different image.'], 502);
+        }
+    }
+    // The old row comes back with the update, so the replaced photo can be removed.
+    [$status, $rows] = supabase_request($supabase, 'GET', '/rest/v1/profiles?id=eq.' . rawurlencode($owner) . '&select=cover_path', null, $token);
+    $previous = $status === 200 && is_array($rows) && is_string($rows[0]['cover_path'] ?? null) ? $rows[0]['cover_path'] : null;
+    [$status, $data] = supabase_request($supabase, 'PATCH', '/rest/v1/profiles?id=eq.' . rawurlencode($owner), ['cover_path' => $path], $token);
+    $saved = in_array($status, [200, 204], true);
+    // Remove whichever photo is no longer used: the replaced one, or the new one if the save failed.
+    $unused = $saved ? $previous : $path;
+    if (is_string($unused) && $unused !== '') {
+        supabase_request($supabase, 'DELETE', '/storage/v1/object/avatars/' . $unused, null, $token);
+    }
+    if (!$saved) {
+        // 42703: the profile_cover migration hasn't been applied to this database yet.
+        if (is_array($data) && in_array($data['code'] ?? null, ['42703', 'PGRST204'], true)) {
+            error_log('Cover photos need supabase/migrations/20261102000000_profile_cover.sql applied.');
+            json_response(['error' => 'Cover photos aren’t set up on the server yet. Try again later.'], 503);
+        }
+        rpc_failure($status, $data, 'Your profile isn’t ready yet. Confirm your email, then sign in again.');
+    }
+    json_response(['cover' => avatar_url($supabase, $path)]);
 }
 
 /** @param array{url: string, publishable_key: string, secret_key: string} $supabase */

@@ -1,4 +1,4 @@
-/* Portfolio-focused workspace: discipline filters, live project covers and motion. */
+/* Portfolio-focused workspace: discipline filters, creator portfolios, live project covers and motion. */
 .workspace { --ease-out: cubic-bezier(.16,1,.3,1); --ink: #0b1338; }
 .workspace ::selection { background: #cfdeff; color: var(--ink); }
 html:has(body.workspace) { scrollbar-color: #c6d3ea #f4f8fb; }
@@ -42,6 +42,23 @@ html:has(body.workspace) { scrollbar-color: #c6d3ea #f4f8fb; }
 .ws-discipline.active .ws-discipline-icon { background: var(--disc); color: #fff; }
 .ws-discipline.active b { background: #fff; color: color-mix(in srgb, var(--disc) 70%, #0b1338); }
 .ws-explore-panel .ws-disciplines + .ws-feed-tabs { margin-top: 16px; }
+/* Portfolios tab: every member's page as a card, in a random order each visit. */
+.ws-folio-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin-top: 18px; }
+.ws-folio { --hue: 220; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid #e3eaf5; border-radius: 16px; background: #fff; color: inherit; text-decoration: none; transition: border-color .3s, box-shadow .35s var(--ease-out), transform .35s var(--ease-out); animation: ws-fade .5s var(--ease-out) both; animation-delay: calc(min(var(--i), 6) * 50ms); }
+.ws-folio:hover { border-color: #c9d9f2; transform: translateY(-2px); box-shadow: 0 14px 28px -20px #1a3a6b80; }
+.ws-folio-cover { position: relative; display: block; height: 110px; background: linear-gradient(135deg, hsl(var(--hue) 70% 92%), hsl(calc(var(--hue) + 40) 70% 86%)); }
+.ws-folio-cover img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .7s var(--ease-out); }
+.ws-folio:hover .ws-folio-cover img { transform: scale(1.04); }
+.ws-folio-body { position: relative; display: flex; flex: 1; flex-direction: column; padding: 0 14px 14px; }
+.ws-folio .ws-folio-avatar { width: 56px; height: 56px; margin-top: -28px; margin-bottom: 10px; border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 6px 14px -6px #1a3a6b66; font-size: 18px; }
+.ws-folio strong { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 14px; font-weight: 700; letter-spacing: -.3px; }
+.ws-folio strong .ws-icon { flex-shrink: 0; width: 14px; height: 14px; color: #0073ff; fill: #0073ff; stroke: white; }
+.ws-folio small { display: block; margin-top: 2px; color: #6d7d9e; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-folio-bio { display: -webkit-box; margin-top: 8px; overflow: hidden; color: #50607f; font-size: 12px; line-height: 1.5; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ws-folio-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 14px; color: #6d7d9e; font-size: 11px; }
+.ws-folio-meta b { display: inline-flex; align-items: center; gap: 4px; color: #0062f5; font-weight: 650; white-space: nowrap; }
+.ws-folio-meta b .ws-icon { width: 13px; height: 13px; transition: transform .3s var(--ease-out); }
+.ws-folio:hover .ws-folio-meta b .ws-icon { transform: translateX(3px); }
 .ws-feed-tabs > button:not(.ws-filter-button) { transition: color .2s; }
 .ws-feed-tabs > button:not(.ws-filter-button):hover { color: #0b1338; }
 .ws-feed-tabs > button.active::after { animation: ws-underline .45s var(--ease-out); }
@@ -188,10 +205,11 @@ html:has(body.workspace) { scrollbar-color: #c6d3ea #f4f8fb; }
 @media (max-width: 760px) {
   .ws-disciplines { margin-inline: -11px; padding-inline: 11px; scroll-padding-inline: 11px; }
   .ws-discipline-icon { width: 30px; height: 30px; }
+  .ws-folio-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 }
 /* Phones get one readable column instead of two cramped ones. */
 @media (max-width: 560px) {
-  .ws-project-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .ws-project-grid, .ws-folio-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .ws-project-open { height: 196px; }
   .ws-project-open img { height: 196px; }
   .ws-project-body { padding: 12px 13px 14px; }
@@ -215,7 +233,7 @@ html:has(body.workspace) { scrollbar-color: #c6d3ea #f4f8fb; }
   .ws-project-open { height: 190px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ws-project:hover, .ws-discipline:hover, .ws-feature-card:hover { transform: none; }
+  .ws-project:hover, .ws-discipline:hover, .ws-folio:hover, .ws-feature-card:hover { transform: none; }
 }
 
 /* Loading skeleton, shown only until the workspace script renders */

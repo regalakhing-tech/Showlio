@@ -82,6 +82,7 @@ function creator_card(array $supabase, array $creator): array
         'username' => $creator['username'],
         'bio' => $creator['bio'],
         'avatar' => avatar_url($supabase, $creator['avatarPath']),
+        'cover' => avatar_url($supabase, $creator['coverPath'] ?? null),
         'followers' => (int) $creator['followers'],
         'hue' => hexdec(substr((string) $creator['id'], 0, 2)) * 360 >> 8, // A steady monogram colour per person.
         'real' => true,
@@ -107,7 +108,6 @@ function feed_show(array $supabase): never
     $urls = sign_project_media($supabase, $token, array_values(array_unique($paths)));
     $gallery = static fn (array $project): array => array_values(array_filter(array_map(static fn (string $path): ?string => $urls[$path] ?? null, $photos($project))));
     $media = static fn (array $project): array => array_values(array_filter(array_map(static fn (string $path): ?array => isset($urls[$path]) ? ['path' => $path, 'url' => $urls[$path]] : null, $photos($project))));
-
     json_response([
         'projects' => array_map(static fn (array $project): array => project_card($project, $me, isset($liked[$project['id']]), $gallery($project), $media($project)), $feed['projects']),
         'creators' => array_map(static fn (array $creator): array => creator_card($supabase, $creator), $feed['creators']),

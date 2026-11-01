@@ -336,3 +336,12 @@ test('Showlio projects fold into the portfolio: new ones first, linked ones refr
   assert.deepEqual(model.mergeShowlioWorks(second, page([])).map((work) => work.id), ['mine'], 'projects deleted on Showlio leave the portfolio');
   assert.deepEqual(model.mergeShowlioWorks(second, page([{ id: 'p2', title: 'New launch', images: [] }, { id: 'p1', title: 'Reel (final)', images: [] }])).length, 3, 'loading again never duplicates');
 });
+
+test('the editor keeps its draft only when it was saved from the current publish', () => {
+  const published = { publishedAt: 200 };
+  assert.equal(model.draftMatchesPublished({ publishedAt: 200 }, published), true, 'same publish, with or without later edits');
+  assert.equal(model.draftMatchesPublished({ publishedAt: 100 }, published), false, 'published again elsewhere');
+  assert.equal(model.draftMatchesPublished({}, published), false, 'a starting draft never replaces the published page');
+  assert.equal(model.draftMatchesPublished(null, published), false);
+  assert.equal(model.draftMatchesPublished({}, null), true, 'nothing published yet');
+});

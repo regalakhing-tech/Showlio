@@ -71,7 +71,7 @@ function published_portfolio_values(array $input, array $supabase, string $owner
     $content = map_portfolio_images(['version' => 1, 'profile' => $profile, 'style' => $style, 'works' => $works, 'publishedAt' => (int) (microtime(true) * 1000)], static function (mixed $image) use ($supabase, $owner, &$paths): string {
         if ($image === '') return '';
         if (!is_string($image) || strlen($image) > 4096) invalid_input(['image' => 'Choose a valid portfolio image.']);
-        if (preg_match('~^/assets/(?:[a-z0-9_~-][a-z0-9._~-]*/)*[a-z0-9_~-][a-z0-9._~-]*\.(?:png|jpe?g|gif|webp|avif)$~i', $image) === 1) return $image;
+        if (preg_match('#^/assets/(?:[a-z0-9_~-][a-z0-9._~-]*/)*[a-z0-9_~-][a-z0-9._~-]*\.(?:png|jpe?g|gif|webp|avif)$#i', $image) === 1) return $image;
         $base = rtrim($supabase['url'], '/') . '/storage/v1/object/';
         if (str_starts_with($image, $base . 'public/avatars/') && preg_match('~^[a-zA-Z0-9_/-]+\.(?:png|jpe?g|webp)$~', substr($image, strlen($base . 'public/avatars/'))) === 1) return $image;
         foreach (['portfolio-media', 'project-media'] as $bucket) {

@@ -50,10 +50,14 @@ applyAccount(loaded.data);
 function applyFeed({ projects, creators, likes, bookmarks, following }) {
   addPeople(creators);
   state.creatorIds = creators.map(creator => creator.id);
+  // A fresh random order each visit, so every creator's portfolio gets its turn up front.
+  state.portfolioOrder = state.creatorIds.map(id => [Math.random(), id]).sort((a, b) => a[0] - b[0]).map(([, id]) => id);
   state.projects = projects;
   for (const [key, ids] of [['likes', likes], ['bookmarks', bookmarks], ['following', following]]) state[key] = [...new Set([...state[key], ...ids])];
 }
 state.creatorIds = [];
+// Explore opens on everyone's portfolios.
+state.feed.category = 'Profiles';
 if (feed.ok) applyFeed(feed.data);
 if (inbox.ok) { state.notifications = inbox.data.notifications; state.followers = inbox.data.followers; }
 const dialog = $('#workspace-dialog');
@@ -481,6 +485,17 @@ const actions = {
   readAvatar: (file) => resizeImage(file, 512),
   refresh: () => render(),
   setSettingsTab(tab) { state.settingsTab=tab; renderView(); },
+  // The cover saves straight away, so the workspace and Explore show it at once. No file removes it.
+  async saveCover(file) {
+    let image;
+    try { image = file ? await resizeImage(file, 1600) : undefined; } catch (error) { notify(error.message); return; }
+    state.coverBusy = true; renderView();
+    const { ok, data } = await api('profile/cover', image ? 'PUT' : 'DELETE', image ? { image } : undefined);
+    state.coverBusy = false;
+    if (ok) { state.profile.cover = data.cover; state.draft.cover = data.cover; }
+    render();
+    notify(ok ? image ? 'Cover photo updated.' : 'Cover photo removed.' : errorOf(data));
+  },
   // Only a newly chosen photo (a data URL) is uploaded; otherwise the saved one stays.
   async saveProfile(profile) {
     const Swal = await alerts();
@@ -520,7 +535,7 @@ function renderSidebar() {
   const unread=state.notifications.filter(item=>item.unread).length;
   const nav=[['grid','Explore','explore'],['folder','My portfolio','projects'],['bookmark','Saved','saved'],['bell','Notifications','notifications'],['message','Messages','messages'],['settings','Settings','settings']];
   const completion=completionPercent();
-  $('#workspace-sidebar').innerHTML=`<img class="ws-cover" src="/assets/images/thumbs/workspace-mountains-cover.webp" alt="Alpine mountains at sunset" width="302" height="130"><div class="ws-profile-content"><div class="ws-profile-top"><div class="ws-avatar-wrap">${profile.avatar?`<img class="ws-main-avatar" src="${esc(profile.avatar)}" alt="${esc(profile.name)}" width="120" height="120">`:`<span class="ws-main-avatar ws-monogram" style="--hue:220" role="img" aria-label="${esc(profile.name)}">${esc(initials(profile.name))}</span>`}<button class="ws-avatar-camera" data-action="edit-photo" aria-label="Change profile photo">${icon('camera')}</button></div>${state.preferences.showAvailability?`<span class="ws-available ${isAvailable?'':'is-busy'}"><i></i>${isAvailable?'Available':profile.availability==='showcasing'?'Showcasing':'Unavailable'}</span>`:''}</div><h2 class="ws-profile-name">${esc(profile.name)}</h2><p class="ws-profile-headline">${esc(profile.headline||`@${profile.username}`)}</p><p class="ws-profile-location">${icon('pin')} ${esc(profile.location||'Location not set')}</p><p class="ws-profile-bio">${esc(profile.bio||'Add a short bio in Settings so people know what you create.')}</p>${completionHidden()?'':`<div class="ws-completion"><div><span>Profile completion</span><b>${completion}%</b></div><span class="ws-progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${completion}"><span style="width:${completion}%"></span></span>${completion<100?`<button class="ws-completion-link" data-action="complete-profile">Complete your profile ${icon('arrow')}</button>`:''}</div>`}</div><a class="ws-btn ws-primary ws-create-portfolio" href="/portfolio/">${icon("plus")} Create portfolio</a><nav class="ws-nav" aria-label="Workspace navigation">${nav.map(([symbol,label,target])=>{const active=(target===state.page&&!state.feed.savedOnly&&!state.feed.mineOnly)||(target==='saved'&&state.page==='explore'&&state.feed.savedOnly)||(target==='projects'&&state.page==='explore'&&state.feed.mineOnly);return `<button class="${active?'active':''}" data-nav="${target}" ${active?'aria-current="page"':''}>${icon(symbol)}<span>${label}</span>${(target==='notifications'?unread:target==='messages'?state.messages.unread:0)?`<b class="ws-nav-count" aria-label="${target==='notifications'?unread:state.messages.unread} unread">${target==='notifications'?unread:state.messages.unread}</b>`:''}</button>`;}).join('')}</nav><p class="ws-demo-note">Explore shows sample creators and projects</p>`;
+  $('#workspace-sidebar').innerHTML=`<img class="ws-cover" src="${esc(profile.cover||'/assets/images/thumbs/workspace-mountains-cover.webp')}" alt="${profile.cover?'Your cover photo':'Alpine mountains at sunset'}" width="302" height="130"><div class="ws-profile-content"><div class="ws-profile-top"><div class="ws-avatar-wrap">${profile.avatar?`<img class="ws-main-avatar" src="${esc(profile.avatar)}" alt="${esc(profile.name)}" width="120" height="120">`:`<span class="ws-main-avatar ws-monogram" style="--hue:220" role="img" aria-label="${esc(profile.name)}">${esc(initials(profile.name))}</span>`}<button class="ws-avatar-camera" data-action="edit-photo" aria-label="Change profile photo">${icon('camera')}</button></div>${state.preferences.showAvailability?`<span class="ws-available ${isAvailable?'':'is-busy'}"><i></i>${isAvailable?'Available':profile.availability==='showcasing'?'Showcasing':'Unavailable'}</span>`:''}</div><h2 class="ws-profile-name">${esc(profile.name)}</h2><p class="ws-profile-headline">${esc(profile.headline||`@${profile.username}`)}</p><p class="ws-profile-location">${icon('pin')} ${esc(profile.location||'Location not set')}</p><p class="ws-profile-bio">${esc(profile.bio||'Add a short bio in Settings so people know what you create.')}</p>${completionHidden()?'':`<div class="ws-completion"><div><span>Profile completion</span><b>${completion}%</b></div><span class="ws-progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${completion}"><span style="width:${completion}%"></span></span>${completion<100?`<button class="ws-completion-link" data-action="complete-profile">Complete your profile ${icon('arrow')}</button>`:''}</div>`}</div><a class="ws-btn ws-primary ws-create-portfolio" href="/portfolio/">${icon("plus")} Create portfolio</a><nav class="ws-nav" aria-label="Workspace navigation">${nav.map(([symbol,label,target])=>{const active=(target===state.page&&!state.feed.savedOnly&&!state.feed.mineOnly)||(target==='saved'&&state.page==='explore'&&state.feed.savedOnly)||(target==='projects'&&state.page==='explore'&&state.feed.mineOnly);return `<button class="${active?'active':''}" data-nav="${target}" ${active?'aria-current="page"':''}>${icon(symbol)}<span>${label}</span>${(target==='notifications'?unread:target==='messages'?state.messages.unread:0)?`<b class="ws-nav-count" aria-label="${target==='notifications'?unread:state.messages.unread} unread">${target==='notifications'?unread:state.messages.unread}</b>`:''}</button>`;}).join('')}</nav><p class="ws-demo-note">Explore shows sample creators and projects</p>`;
 }
 let lastViewKey='';
 function renderView() {
@@ -558,7 +573,7 @@ document.addEventListener('click',event=>{
   if(button.id==='ws-mobile-menu'){const open=!document.body.classList.contains('ws-nav-open');document.body.classList.toggle('ws-nav-open',open);button.setAttribute('aria-expanded',String(open));return;}
   const nav=button.dataset.nav;
   if(nav){
-    if(['explore','projects','saved'].includes(nav)){state.feed={...state.feed,category:'All',query:'',mineOnly:nav==='projects',savedOnly:nav==='saved'};navigate('explore');}
+    if(['explore','projects','saved'].includes(nav)){state.feed={...state.feed,category:nav==='explore'?'Profiles':'All',query:'',mineOnly:nav==='projects',savedOnly:nav==='saved'};navigate('explore');}
         else navigate(nav);
     return;
   }

@@ -303,29 +303,24 @@ body.is-leaving .auth-shell { opacity: 0; transform: scale(.99); transition: opa
   .auth-perks li { font-size: 13px; gap: 10px; }
   .auth-perks li > span { width: 40px; height: 40px; }
 }
+/* Smaller screens: just the Showlio logo and the form, centred in the screen. */
 @media (max-width: 880px) {
-  .auth-shell { grid-template-columns: minmax(0, 560px); grid-template-areas: "head" "panel" "perks"; justify-content: center; align-content: start; row-gap: 26px; padding-block: 28px 40px; }
-  .auth-head { align-self: auto; }
-  .auth-showcase { display: none; }
-  .auth-brand img { --w: 210px; }
-  .auth-back { margin-bottom: 18px; }
-  .auth-title { margin-top: 6px; font-size: clamp(32px, 7.4vw, 44px); }
-  .auth-lede { margin-top: 10px; font-size: 16px; }
-  .auth-perks { margin-top: 4px; justify-content: space-between; gap: 14px; }
+  .auth-shell { grid-template-columns: minmax(0, 460px); grid-template-areas: "head" "panel"; justify-content: center; align-content: safe center; row-gap: 22px; padding-block: 24px 40px; }
+  .auth-head { position: relative; display: grid; justify-items: center; align-self: auto; }
+  .auth-showcase, .auth-title, .auth-lede, .auth-perks { display: none; }
+  .auth-back { justify-self: start; margin-bottom: 22px; }
+  .auth-brand img { --w: 210px; margin-inline: 0; }
 }
 @media (max-width: 520px) {
-  .auth-shell { padding: 20px 16px 32px; row-gap: 22px; }
-  .auth-brand img { --w: 168px; }
-  .auth-back { height: 34px; margin-bottom: 14px; font-size: 13px; }
-  .auth-lede { font-size: 15px; }
+  .auth-shell { padding: 16px 16px 28px; row-gap: 18px; }
+  .auth-brand img { --w: 180px; }
+  .auth-back { height: 34px; margin-bottom: 16px; font-size: 13px; }
   .auth-card { padding: 28px 20px 24px; border-radius: 20px; }
   .auth-card h2 { font-size: 26px; }
   .auth-pair { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .auth-otp { gap: 7px; margin-top: 24px; }
   .auth-otp input { height: 52px; font-size: 21px; }
   .auth-input input { font-size: 16px; }
-  .auth-perks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-  .auth-perks li { flex-direction: column; align-items: flex-start; gap: 8px; font-size: 12.5px; }
   .auth-row { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -22,6 +22,7 @@ $routes = [
     '/api/auth/password' => ['POST' => fn () => auth_change_password($supabase)],
     '/api/profile' => ['GET' => fn () => profile_show($supabase), 'PUT' => fn () => profile_save($supabase)],
     '/api/profile/preferences' => ['PATCH' => fn () => profile_preferences($supabase)],
+    '/api/profile/cover' => ['PUT' => fn () => profile_cover($supabase), 'DELETE' => fn () => profile_cover($supabase, true)],
     '/api/feed' => ['GET' => fn () => feed_show($supabase)],
     '/api/portfolio' => ['GET' => fn () => portfolio_show($supabase), 'PUT' => fn () => portfolio_publish($supabase)],
     '/api/portfolio/media' => ['POST' => fn () => portfolio_media_add($supabase)],

@@ -88,5 +88,6 @@ function portfolio_publish(array $supabase): never
     [$content, $paths] = published_portfolio_values(read_json_body(262144), $supabase, $owner);
     $existing = published_portfolio_row($supabase, $owner, $token);
     write_portfolio_snapshot($supabase, $owner, $token, $content, $paths, $existing);
-    json_response(['published' => true]);
+    // The editor stamps its draft with this, so it can tell later whether the draft is the published version.
+    json_response(['published' => true, 'publishedAt' => $content['publishedAt']]);
 }

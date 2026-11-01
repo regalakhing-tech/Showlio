@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createWorkspaceState, filterProjects, normalizeProfile, profileCompletion } from '../public/assets/js/workspace-model.js';
-import { projectCard, projectCover } from '../public/assets/js/workspace-explore.js';
+import { projectCard, projectCover, portfolioGrid, renderExplore } from '../public/assets/js/workspace-explore.js';
+import { addPeople } from '../public/assets/js/workspace-data.js';
+import { renderSettings } from '../public/assets/js/workspace-settings.js';
 import { renderNotifications, describe, dayLabel, visibleNotifications } from '../public/assets/js/workspace-notifications.js';
 import { checkSignIn, checkSignUp, cleanUsername } from '../public/assets/js/auth-model.js';
 import { renderPortfolio as renderMyPortfolio } from '../public/assets/js/workspace-library.js';
@@ -240,4 +242,33 @@ test('My portfolio: real projects get icon-only edit and delete, sample ones do 
   assert.match(html, /<strong>2<\/strong><span>projects<\/span>/);
   assert.match(html, /class="ws-mine-add" data-action="share"/);
   assert.doesNotMatch(html, /confirm\(/);
+});
+
+test('Explore opens on every creator portfolio in the visit’s order, with Video left out of the tabs', () => {
+  addPeople([{ id: 'u1', name: 'Ana <Cruz>', role: 'Designer', username: 'ana', bio: 'Brand work', hue: 40, real: true }, { id: 'u2', name: 'Ben', role: 'Editor', username: 'ben', hue: 90, real: true }]);
+  const state = { creatorIds: ['u1', 'u2'], portfolioOrder: ['u2', 'u1'], projects: [{ creator: 'u1', images: ['/assets/images/a.webp'], categories: ['Design'] }, { creator: 'u1', images: [], categories: ['Video'] }], feed: { query: '', category: 'Profiles', sort: 'for-you' }, bookmarks: [], likes: [], following: [] };
+  const html = portfolioGrid(state);
+  assert.ok(html.indexOf('/portfolio/view/?u=ben') < html.indexOf('/portfolio/view/?u=ana'), 'random order is kept');
+  assert.match(html, /Ana &lt;Cruz&gt;/);
+  assert.match(html, /<img src="\/assets\/images\/a\.webp"/);
+  assert.match(html, /2 projects/);
+  assert.doesNotMatch(portfolioGrid({ ...state, feed: { ...state.feed, query: 'ana' } }), /u=ben/, 'search narrows portfolios');
+  const page = renderExplore(state);
+  assert.match(page, /data-category="Profiles" aria-pressed="true"/);
+  assert.match(page, /data-category="All"/);
+  assert.doesNotMatch(page, /data-category="Video"[^>]*class="ws-discipline|class="ws-discipline[^"]*" data-category="Video"/);
+  assert.doesNotMatch(page, /ws-project-grid/, 'the Portfolios tab shows people, not projects');
+});
+
+test('settings show the profile as others see it, with a cover photo to add, change or remove', () => {
+  const state = createWorkspaceState({});
+  state.settingsTab = 'profile';
+  const none = renderSettings(state);
+  assert.match(none, /data-settings-action="choose-cover"[^>]*>.*Add cover photo/);
+  assert.doesNotMatch(none, /remove-cover/);
+  state.profile.cover = 'https://abc.supabase.co/storage/v1/object/public/avatars/u1/cover-a.webp';
+  const set = renderSettings(state);
+  assert.match(set, /<img src="https:\/\/abc\.supabase\.co\/storage\/v1\/object\/public\/avatars\/u1\/cover-a\.webp" alt="Your cover photo">/);
+  assert.match(set, /data-settings-action="remove-cover" aria-label="Remove cover photo"/);
+  assert.match(renderSettings({ ...state, coverBusy: true }), /ws-settings-cover is-busy" aria-busy="true"/);
 });

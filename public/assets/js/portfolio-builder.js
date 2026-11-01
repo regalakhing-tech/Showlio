@@ -1,4 +1,4 @@
-import { createPortfolio, normalizePortfolio, validateStep, portfolioProgress, visibleWorks, reorderWorks, createPublishedSnapshot, availabilityLabel, portfolioFromCreator, portfolioDraftFromCreator, mergeShowlioWorks } from './portfolio-model.js';
+import { createPortfolio, normalizePortfolio, validateStep, portfolioProgress, visibleWorks, reorderWorks, createPublishedSnapshot, availabilityLabel, portfolioFromCreator, portfolioDraftFromCreator, mergeShowlioWorks, draftMatchesPublished } from './portfolio-model.js';
 import { loadDraft, saveDraft, saveSnapshot, loadSnapshot } from './portfolio-store.js';
 import { renderPortfolio, renderWorkDetail, escapeHtml as esc } from './portfolio-render.js';
 import { renderProfile, renderAbout, renderWorks, renderStyle, renderPublish, renderWorkForm } from './portfolio-editor.js';
@@ -47,6 +47,8 @@ function applyAccount() {
   if (account.avatar) profile.avatar = account.avatar;
   else if (!profile.avatar.startsWith('data:')) profile.avatar = '';
   if (!profile.availability) profile.availability = availabilityLabel(account.availability);
+  // The registered email fills an empty contact field until the first publish; after that, an empty one was chosen.
+  if (!profile.email && account.email && !state.portfolio.publishedAt) profile.email = account.email;
   return JSON.stringify(profile) !== before;
 }
 function scheduleAccountSync() {
@@ -272,7 +274,7 @@ async function createPreview() {
     if (!locallySaved && !account) return;
     const snapshot = createPublishedSnapshot(state.portfolio);
     const published = account ? await publishPortfolio(snapshot, { headers: slotHeaders() }) : snapshot;
-    if (account) { state.livePublished = true; state.portfolio.publishedLayout = snapshot.style.layout; await persist(); }
+    if (account) { state.livePublished = true; state.portfolio.publishedLayout = snapshot.style.layout; state.portfolio.publishedAt = published.publishedAt; await persist(); }
     try { state.snapshot = await saveSnapshot(snapshot); }
     catch (error) { if (!account) throw error; state.snapshot = published; }
     render();
@@ -557,16 +559,19 @@ window.addEventListener('hashchange', () => { const index = hashes.indexOf(locat
 window.addEventListener('beforeunload', event => { if (state.dirty || pendingImages) { event.preventDefault(); event.returnValue = ''; } });
 
 // Published Showlio projects load into the portfolio by themselves and stay current; works added here stay too.
-async function loadShowlioProjects({ restore = false } = {}) {
+async function loadShowlioProjects() {
   if (!account?.username) return false;
   let response;
   try { response = await fetch(`/api/portfolio?u=${encodeURIComponent(account.username)}`, { headers: slotHeaders() }); } catch { return false; }
   if (!response.ok) return false;
   const page = await response.json().catch(() => ({}));
   const before = JSON.stringify(state.portfolio);
-  if (restore && page.portfolio) {
+  const published = page.portfolio ? normalizePortfolio(page.portfolio) : null;
+  if (!draftMatchesPublished(state.portfolio, published)) {
     state.portfolio = portfolioDraftFromCreator(page);
-    state.snapshot = normalizePortfolio(page.portfolio);
+    state.snapshot = published;
+    // Name, role, bio and links stay the account's, which may be newer than the publish.
+    applyAccount();
   }
   // Fresh project data is separate from the saved portfolio's manual works and settings.
   state.portfolio.works = mergeShowlioWorks(state.portfolio.works, portfolioFromCreator({ ...page, portfolio: null }).works);
@@ -599,15 +604,15 @@ async function start() {
   else status('Draft saved');
   if (!account) notify(loaded.data.error ?? 'Your Showlio profile couldn’t be loaded, so changes stay in this browser for now.');
   try { state.snapshot = await loadSnapshot(state.portfolio.profile.slug); } catch { /* The draft remains editable when storage is blocked. */ }
+  const count = state.portfolio.works.length;
+  // The published page loads before the editor shows, so editing starts from what visitors see.
+  const refreshed = await loadShowlioProjects();
+  if (refreshed) changed({ sync: false });
   state.step = Math.max(0, hashes.indexOf(location.hash.slice(1)));
   render();
+  $('#pb-main').removeAttribute('aria-busy');
   animateEnter('first');
-  const count = state.portfolio.works.length;
-  if (await loadShowlioProjects({ restore: !draft })) {
-    changed({ sync: false });
-    render();
-    const added = state.portfolio.works.length - count;
-    if (added > 0) notify(`${added} ${added === 1 ? 'project' : 'projects'} from your Showlio uploads added.`);
-  }
+  const added = state.portfolio.works.length - count;
+  if (refreshed && added > 0) notify(`${added} ${added === 1 ? 'project' : 'projects'} from your Showlio uploads added.`);
 }
 start();

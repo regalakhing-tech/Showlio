@@ -254,7 +254,7 @@ test('workspace profile RPCs read, save and switch settings in one call each, as
   const call = async (sql, params) => (await rows(user('erin', sql, params)))[0].result;
 
   const fresh = await call('select my_profile() as result');
-  assert.deepEqual(fresh.profile, { username: 'erin', email: 'member@example.com', name: 'Erin Lee', headline: '', bio: '', location: '', avatarPath: null, availability: 'available', visible: true, skills: [], links: { website: '', instagram: '', youtube: '' } }, 'a new account starts public');
+  assert.deepEqual(fresh.profile, { username: 'erin', email: 'member@example.com', name: 'Erin Lee', headline: '', bio: '', location: '', avatarPath: null, coverPath: null, availability: 'available', visible: true, skills: [], links: { website: '', instagram: '', youtube: '' } }, 'a new account starts public');
   assert.deepEqual(fresh.preferences, { showAvailability: true, communityDiscovery: true, projectNotifications: true, messageNotifications: true, communityNotifications: true, productNotifications: false, profileCompleted: false, showActiveStatus: true });
 
   const draft = { name: 'Erin Lee', headline: 'Illustrator', bio: 'Ink and colour.', location: 'Davao', availability: 'showcasing', visible: true, skills: ['Procreate', 'procreate', 'Inking'], links: { website: 'https://erin.art', instagram: '', youtube: 'https://youtube.com/@erin' }, avatarPath: `${users.erin}/one.webp` };
@@ -533,4 +533,13 @@ test('creators edit their own projects: details, discipline, tools, and which ph
   await assert.rejects(guest('select update_my_project($1, $2, $3)', [id, { title: 'x' }, []]), DENIED);
   await assert.rejects(user('fay', 'select update_my_project($1, $2, $3)', [id, { title: '' }, []]), /check constraint|violates/, 'a title is still required');
   assert.equal((await call('gus', 'select workspace_feed() as result')).projects.find((item) => item.id === id).title, 'New title', 'a failed edit changes nothing');
+});
+
+test('profile covers: only the owner sets one, and only inside their own folder', async () => {
+  const cover = `${users.alice}/cover-a.webp`;
+  await user('alice', 'update profiles set cover_path = $1 where id = $2', [cover, users.alice]);
+  assert.equal((await db.query('select cover_path from profiles where id = $1', [users.alice])).rows[0].cover_path, cover);
+  await assert.rejects(user('alice', 'update profiles set cover_path = $1 where id = $2', [`${users.bob}/cover.webp`, users.alice]), /check constraint/);
+  assert.equal((await user('bob', 'update profiles set cover_path = $1 where id = $2', [`${users.bob}/x.webp`, users.alice])).affectedRows, 0, 'nobody changes another creator’s cover');
+  await user('alice', 'update profiles set cover_path = null where id = $1', [users.alice]);
 });

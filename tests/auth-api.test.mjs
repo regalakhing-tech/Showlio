@@ -136,6 +136,7 @@ function fakeSupabase(request, body) {
     return [200, account({ previousAvatarPath: 'avatarPath' in body.profile ? 'u1/old.png' : null })];
   }
   if (route === 'POST /rest/v1/rpc/set_my_preferences') return [200, account()];
+  if (route === 'GET /rest/v1/profiles?id=eq.u1&select=cover_path') return [200, [{ cover_path: 'u1/cover-old.webp' }]];
   const bo = { id: OTHER_CREATOR, username: 'bo', name: 'Bo Lim', avatarPath: `${OTHER_CREATOR}/me.webp` };
   if (route === 'POST /rest/v1/rpc/my_conversations') return [200, [{ ...bo, activeAt: null, theme: 'rose', lastMessage: 'See you!', lastMine: false, lastAt: '2026-10-31T03:00:00+00:00', unread: 2 }]];
   if (route === 'POST /rest/v1/rpc/conversation_messages') {
@@ -446,7 +447,7 @@ test('loading the profile is one call as the creator and returns the real profil
   const response = await profileApi('GET');
   assert.equal(response.status, 200);
   const { avatarPath, ...profile } = account().profile;
-  assert.deepEqual(await response.json(), { profile: { ...profile, avatar: avatarUrl(avatarPath) }, preferences: account().preferences });
+  assert.deepEqual(await response.json(), { profile: { ...profile, avatar: avatarUrl(avatarPath), cover: '' }, preferences: account().preferences });
   assert.equal(calls.length, 1, 'no separate session check');
   assert.deepEqual([calls[0].route, calls[0].apikey, calls[0].authorization], ['POST /rest/v1/rpc/my_profile', PUBLISHABLE, `Bearer ${ACCESS_JWT}`], 'RLS as the creator, never the secret key');
 });
@@ -483,6 +484,22 @@ test('saving validates, uploads the photo, saves in one call and removes the old
   assert.equal('avatarPath' in calls[0].body.profile, false);
 });
 
+test('a cover photo uploads to the creator’s folder, replaces the old one, and can be removed', async () => {
+  assert.equal((await profileApi('PUT', { image: 'data:image/png;base64,AAAA' }, 'profile/cover')).status, 422);
+  assert.equal(calls.length, 0, 'an invalid image never reaches storage');
+  const response = await profileApi('PUT', { image: PNG }, 'profile/cover');
+  assert.equal(response.status, 200);
+  const [upload, , save, cleanup] = calls;
+  assert.match(upload.route, /^POST \/storage\/v1\/object\/avatars\/u1\/cover-[0-9a-f]{24}\.png$/);
+  assert.equal((await response.json()).cover, avatarUrl(upload.route.slice(32)));
+  assert.deepEqual([save.route, save.body, save.authorization], ['PATCH /rest/v1/profiles?id=eq.u1', { cover_path: upload.route.slice(32) }, `Bearer ${ACCESS_JWT}`]);
+  assert.equal(cleanup.route, 'DELETE /storage/v1/object/avatars/u1/cover-old.webp', 'the replaced cover is removed');
+  calls.length = 0;
+  const removed = await profileApi('DELETE', undefined, 'profile/cover');
+  assert.deepEqual(await removed.json(), { cover: '' });
+  assert.deepEqual(calls.map(call => call.route), ['GET /rest/v1/profiles?id=eq.u1&select=cover_path', 'PATCH /rest/v1/profiles?id=eq.u1', 'DELETE /storage/v1/object/avatars/u1/cover-old.webp']);
+});
+
 test('a rate-limited save reports the wait and deletes the photo it just uploaded', async () => {
   const response = await profileApi('PUT', { name: 'Ana', headline: 'too fast', availability: 'available', skills: [], links: {}, avatar: PNG });
   assert.equal(response.status, 429);
@@ -514,7 +531,7 @@ test('the feed is one database call plus one signing call, mapped to workspace c
   assert.deepEqual(own, { id: OWN_PROJECT, title: 'My Reel', description: 'Edit of the year.', image: photos[0], images: photos, categories: ['Video'], tools: ['Premiere'], creator: 'u1', owner: true, media: [{ path: `u1/${OWN_PROJECT}/cover.webp`, url: photos[0] }, { path: `u1/${OWN_PROJECT}/detail.webp`, url: photos[1] }], views: 9, likes: 2, comments: 0, saves: 0, created: Date.parse('2026-10-30T12:00:00Z'), duration: '', draft: false, real: true });
   assert.deepEqual(other.media, [], 'only the creator gets storage paths');
   assert.deepEqual([other.owner, other.image, other.images, other.categories, other.likes], [false, '/assets/images/workspace-content.webp', [], ['Other'], 4], 'the viewer\'s own like is added back by the card');
-  assert.deepEqual(data.creators, [{ id: OTHER_CREATOR, name: 'Bo Lim', role: '@bo', username: 'bo', bio: 'Automations.', avatar: '', followers: 7, hue: 270, real: true }]);
+  assert.deepEqual(data.creators, [{ id: OTHER_CREATOR, name: 'Bo Lim', role: '@bo', username: 'bo', bio: 'Automations.', avatar: '', cover: '', followers: 7, hue: 270, real: true }]);
   assert.deepEqual([data.likes, data.following], [[OTHER_PROJECT], [OTHER_CREATOR]]);
 });
 

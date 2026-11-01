@@ -139,6 +139,13 @@ export function portfolioFromCreator(page) {
   return published;
 }
 
+/**
+ * Whether the editor's draft is the creator's published page (or newer edits of it). A draft from before
+ * that publish, from another device or account, or an untouched starting draft is not, and the
+ * editor reopens on the published page instead.
+ */
+export const draftMatchesPublished = (draft, published) => !published || (Boolean(draft) && draft.publishedAt === published.publishedAt);
+
 /** Restore an editable copy without re-including projects omitted from the saved public page. */
 export function portfolioDraftFromCreator(page) {
   const published = portfolioFromCreator(page);

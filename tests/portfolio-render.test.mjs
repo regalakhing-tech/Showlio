@@ -181,3 +181,13 @@ test('missing biography and contact copy do not become invented personal claims'
   assert.doesNotMatch(html, /Meet Real creator|I’d love to hear/);
   assert.match(html, /Contact details coming soon/);
 });
+
+test('contact shows the creator’s real address and Bento keeps one contact anchor', () => {
+  const site = { profile: { name: 'Ana', website: 'https://www.ana.dev/' } };
+  assert.match(renderer.renderPortfolio(site), /<h2 id="pf-contact-heading">[^<]*<\/h2><p>ana\.dev<\/p>/);
+  const bento = renderer.renderPortfolio({ profile: { name: 'Ana', email: 'ana@example.com' }, style: { layout: 'bento' } });
+  assert.equal((bento.match(/id="pf-contact"/g) || []).length, 1);
+  assert.match(bento, /pf-tile pf-tile-contact" href="mailto:ana@example.com" id="pf-contact"/);
+  assert.doesNotMatch(bento, /pf-contact-heading/, 'the contact tile replaces the duplicate band');
+  assert.match(renderer.renderPortfolio({ profile: { name: 'Ana' }, style: { layout: 'bento' } }), /Contact details coming soon/);
+});
