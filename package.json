@@ -20,7 +20,7 @@
     "vercel:env": "node scripts/vercel-env.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.3.16",
+    "@electric-sql/pglite": "0.5.16",
     "@tailwindcss/cli": "4.3.3",
     "jsqr": "1.4.0",
     "tailwindcss": "4.3.3"
